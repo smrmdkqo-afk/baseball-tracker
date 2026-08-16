@@ -91,8 +91,9 @@
       </div>
 
       <div class="record-start-grid">
-        <button class="start-session-card game" data-action="new-game" type="button"><span>GAME</span><strong>새 경기 만들기</strong><small>상대팀과 경기 정보를 기록</small></button>
-        <button class="start-session-card training" data-action="new-training" type="button"><span>TRAINING</span><strong>새 훈련 시작</strong><small>하루 훈련을 한 세션으로 관리</small></button>
+        <div class="form-grid compact" style="grid-template-columns:1fr;">
+          <label>세션 선택<select id="recordSessionPicker" aria-label="세션 선택"><option value="">세션 선택</option></select></label>
+        </div>
       </div>
 
       <section id="sessionWorkspace" class="workspace-card" hidden>
@@ -102,14 +103,15 @@
         </div>
         <div id="gameTabs" class="mode-tabs four" hidden>
           <button class="active" data-game-tab="pitching" type="button">투구</button>
-          <button data-game-tab="hitting" type="button">타격</button>
           <button data-game-tab="defense" type="button">수비</button>
+          <button data-game-tab="hitting" type="button">타격</button>
           <button data-game-tab="baserunning" type="button">주루</button>
         </div>
-        <div id="trainingTabs" class="mode-tabs three" hidden>
+        <div id="trainingTabs" class="mode-tabs four" hidden>
           <button class="active" data-training-tab="throwing" type="button">투구</button>
-          <button data-training-tab="hitting" type="button">타격</button>
           <button data-training-tab="defense" type="button">수비</button>
+          <button data-training-tab="hitting" type="button">타격</button>
+          <button data-training-tab="baserunning" type="button">주루</button>
         </div>
 
         <!-- Game: Pitching -->
@@ -128,22 +130,47 @@
                 <button id="endAppearanceBtn" class="soft-btn full" type="button">등판 종료</button>
               </aside>
               <div class="pitch-input-panel">
-                <div class="panel-head"><div><p class="section-kicker">PITCH RESULT</p><h2>경기 투구</h2></div><span class="microcopy">모든 경기 투구 = 1.00 TLU</span></div>
-                <button class="pitch-action ball" data-pitch="ball" type="button"><b>BALL</b><span>+1 pitch</span></button>
-                <div class="pitch-grid">
-                  <button class="pitch-action strike" data-pitch="called" type="button"><b>루킹</b><span>CALLED STRIKE</span></button>
-                  <button class="pitch-action strike" data-pitch="swinging" type="button"><b>헛스윙</b><span>SWINGING</span></button>
-                  <button class="pitch-action neutral" data-pitch="foul" type="button"><b>파울</b><span>FOUL</span></button>
-                  <button class="pitch-action inplay" data-pitch="inplay" type="button"><b>인플레이</b><span>IN PLAY</span></button>
+                <div class="panel-head"><div><p class="section-kicker">PITCH RESULT</p><h2>경기 투구</h2></div><span class="microcopy">선택 후 저장 버튼으로 반영</span></div>
+
+                <div class="form-grid compact">
+                  <label>이닝<input id="pitchInning" type="number" min="1" value="1" /></label>
+                  <label>초/말<select id="pitchHalf"><option value="top">초</option><option value="bottom">말</option></select></label>
+                  <label>아웃<select id="pitchOuts"><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></label>
+                  <label>Ball<input id="pitchBalls" type="number" min="0" max="3" value="0" /></label>
+                  <label>Strike<input id="pitchStrikes" type="number" min="0" max="2" value="0" /></label>
+                  <label>우리 점수<input id="pitchOurScore" type="number" min="0" value="0" /></label>
+                  <label>상대 점수<input id="pitchOppScore" type="number" min="0" value="0" /></label>
                 </div>
-                <button class="pitch-action hbp" data-pitch="hbp" type="button"><b>사구 HBP</b><span>타석 종료</span></button>
-                <div class="secondary-actions">
+
+                <div class="runner-field span-2" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                  <span>주자</span>
+                  <label><input id="pitchRunner1" type="checkbox" />1루</label>
+                  <label><input id="pitchRunner2" type="checkbox" />2루</label>
+                  <label><input id="pitchRunner3" type="checkbox" />3루</label>
+                </div>
+
+                <div class="pitch-grid">
+                  <button class="pitch-action strike" data-pitch-select="ball" type="button"><b>BALL</b><span>볼</span></button>
+                  <button class="pitch-action strike" data-pitch-select="called" type="button"><b>루킹</b><span>스트라이크</span></button>
+                  <button class="pitch-action strike" data-pitch-select="swinging" type="button"><b>헛스윙</b><span>스트라이크</span></button>
+                  <button class="pitch-action neutral" data-pitch-select="foul" type="button"><b>파울</b><span>파울</span></button>
+                  <button class="pitch-action inplay" data-pitch-select="inplay" type="button"><b>인플레이</b><span>타구</span></button>
+                  <button class="pitch-action hbp" data-pitch-select="hbp" type="button"><b>사구</b><span>HBP</span></button>
+                </div>
+
+                <div class="secondary-actions" style="display:none;">
                   <button data-pitch-tag="WP" type="button">WP</button><button data-pitch-tag="PB" type="button">PB</button><button data-pitch-tag="UNCUGHT3" type="button">낫아웃</button>
                 </div>
                 <div class="game-event-actions">
-                  <button data-game-event="BALK" type="button">보크</button><button data-game-event="IBB" type="button">무투구 IBB</button><button data-game-event="PICKOFF" type="button">견제사</button><button data-game-event="IR_SCORED" type="button">승계주자 득점 +1</button><button data-game-event="NEXT_BATTER" type="button">다음 타자</button>
+                  <button data-game-event="BALK" type="button">보크</button><button data-game-event="IBB" type="button">무투구 IBB</button><button data-game-event="PICKOFF" type="button">견제사</button>
                 </div>
-                <button class="undo-btn" data-action="undo-last-event" type="button">↶ 마지막 입력 취소</button>
+
+                <label id="pitchInplayWrap" style="display:none;">인플레이 결과<select id="pitchInplayResult"><option value="OUT">OUT</option><option value="1B">1B</option><option value="2B">2B</option><option value="3B">3B</option><option value="HR">HR</option><option value="ROE">ROE</option></select></label>
+                <div class="modal-actions right" style="margin-top:12px;">
+                  <button class="undo-btn" data-action="undo-last-event" type="button">↶ 마지막 입력 취소</button>
+                  <button id="pitchDraftCancel" class="soft-btn" type="button">초기화</button>
+                  <button id="pitchDraftSave" class="primary-btn" type="button" disabled>저장</button>
+                </div>
               </div>
             </div>
           </div>
@@ -207,6 +234,12 @@
           <button class="undo-btn" data-action="undo-last-event" type="button">↶ 마지막 입력 취소</button>
         </section>
 
+        <section id="trainingBasePanel" class="workspace-panel" hidden>
+          <div class="panel-head"><div><p class="section-kicker">TRAINING BASERUNNING</p><h2>주루 훈련</h2></div><span class="microcopy">-</span></div>
+          <div class="result-grid base-results"><button data-base="SB" type="button">도루 성공<span>SB</span></button><button data-base="CS" type="button">도루 실패<span>CS</span></button></div>
+          <button class="undo-btn" data-action="undo-last-event" type="button">↶ 마지막 입력 취소</button>
+        </section>
+
         <!-- Training: Defense -->
         <section id="trainingDefensePanel" class="workspace-panel" hidden>
           <div class="panel-head"><div><p class="section-kicker">DEFENSE TRAINING</p><h2>수비 훈련</h2></div><span id="trainingDefenseSummary" class="microcopy">0 reps</span></div>
@@ -224,7 +257,7 @@
     <section class="view" data-view="logs">
       <div class="page-intro"><div><p class="kicker">EVENT LOG</p><h2>상세 기록 로그</h2></div><span id="logCount" class="status-note">0 events</span></div>
       <div class="filter-bar">
-        <div class="filter-chips" id="logFilters"><button class="active" data-log-filter="all" type="button">전체</button><button data-log-filter="pitch" type="button">투구</button><button data-log-filter="batting" type="button">타격</button><button data-log-filter="defense" type="button">수비</button><button data-log-filter="baserunning" type="button">주루</button><button data-log-filter="training" type="button">훈련</button><button data-log-filter="game_event" type="button">예외</button></div>
+        <div class="filter-chips" id="logFilters"><button class="active" data-log-filter="all" type="button">전체</button><button data-log-filter="pitch" type="button">투구</button><button data-log-filter="defense" type="button">수비</button><button data-log-filter="batting" type="button">타격</button><button data-log-filter="baserunning" type="button">주루</button><button data-log-filter="training" type="button">훈련</button><button data-log-filter="game_event" type="button">예외</button></div>
         <select id="logSessionFilter" class="session-filter"><option value="all">모든 경기/훈련</option></select>
       </div>
       <div id="logList" class="log-list"></div>
