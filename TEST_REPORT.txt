@@ -1,19 +1,25 @@
-Baseball Tracker Pro V5 - local validation
+Baseball Tracker Pro V5.1 Quick - validation report
 
 PASS - app.js JavaScript syntax
 PASS - sw.js JavaScript syntax
-PASS - HTML id <-> JavaScript getElementById reference check
-PASS - local asset reference check
 PASS - manifest JSON parse
-PASS - top-level runtime smoke test with mocked browser DOM
-PASS - V4 local sample migration to V5 sessions/events
-PASS - game functional flow: game -> 4th inning/top/2 outs/1B+2B inherited runners -> pitch events -> IR scored
-PASS - game hitting + stolen base event calculation
-PASS - training throwing/hitting/defense flow
-PASS - event soft delete -> workload recalculation
+PASS - HTML id <-> JavaScript getElementById reference check
+PASS - detailed appearance UI removed (inning / outs / inherited runners)
+PASS - game throw buttons present: pickoff_normal / pickoff_error / game_warmup
+PASS - IN PLAY required results present: OUT / 1B / 2B / 3B / HR / ROE / SH / SF
+PASS - workload logic test using the exact app calculation functions:
+       4 official pitches + normal pickoff + error pickoff + warm-up
+       => Official Pitches 4, Game TLU 6.7
+PASS - total workload logic test:
+       above + training 0.75 + 0.85 + 1.00
+       => Total Throws 10, Total TLU 9.3
+PASS - batter-flow logic test:
+       K + BB + HBP + IN PLAY(SF) => Batters Faced 4
+PASS - IN PLAY counted as Strike for Strike%
+PASS - IN PLAY optional batted-ball type / direction retained in calculations
+PASS - game_throw events do not increase Official Pitch Count
+PASS - core static assets served with HTTP 200 on a local web server
 
 Not executed here:
-- Live Supabase SQL execution / RLS round-trip (Project URL is not present in this package)
-- Live GitHub Pages / phone PWA install round-trip
-
-Run migration_v5.sql in the real Supabase project before V5 cloud sync testing.
+- Live Supabase round-trip / RLS test (Project URL not included)
+- Live GitHub Pages deployment and real phone/tablet PWA install

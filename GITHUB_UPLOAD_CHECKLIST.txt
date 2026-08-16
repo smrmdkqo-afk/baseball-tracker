@@ -1,16 +1,17 @@
-Baseball Tracker Pro V5 - GitHub Pages 체크리스트
+Baseball Tracker Pro V5.1 Quick - GitHub Pages 체크리스트
 
-[ ] 1. 현재 V4 JSON 백업
-[ ] 2. Supabase SQL Editor에서 migration_v5.sql 전체 실행
-[ ] 3. Supabase Table Editor에 games / training_sessions / appearances / events 생성 확인
-[ ] 4. 기존 athletes / athlete_days / tracker_days 삭제하지 않기
-[ ] 5. supabase-config.js Project URL 확인
-[ ] 6. GitHub repository root에 V5 파일 전체 업로드
-[ ] 7. index.html이 root에 바로 보이는지 확인
-[ ] 8. Settings > Pages > Deploy from a branch > main > /(root)
-[ ] 9. GitHub Pages에서 새로고침
-[ ] 10. 로그인 > 지금 동기화
-[ ] 11. 선수 2명 추가/전환 테스트
-[ ] 12. 경기 생성/등판 시작 상황 테스트
-[ ] 13. 로그 수정/삭제/Undo 테스트
-[ ] 14. 휴대폰/태블릿 동일 계정 동기화 테스트
+[ ] 1. 현재 앱 JSON 백업
+[ ] 2. V5를 이미 사용 중이면 추가 DB migration 없음
+[ ] 3. V4에서 처음 올리는 경우에만 migration_v5.sql 실행
+[ ] 4. supabase-config.js의 Project URL 확인
+[ ] 5. GitHub repository root에 V5.1 파일 전체 업로드/교체
+[ ] 6. index.html이 root에 바로 보이는지 확인
+[ ] 7. Commit changes
+[ ] 8. GitHub Pages 주소 새로고침
+[ ] 9. 새 경기 시작
+[ ] 10. Official Pitch와 Game TLU 분리 확인
+[ ] 11. 견제 정상 +0.85 TLU / 견제 악송구 +0.85 TLU 확인
+[ ] 12. 연습투구 +1.00 TLU 확인
+[ ] 13. IN PLAY 결과 8종 + 선택 타구 형태/방향 확인
+[ ] 14. 로그 수정/삭제/Undo 확인
+[ ] 15. 휴대폰/태블릿 동일 계정 동기화 확인
