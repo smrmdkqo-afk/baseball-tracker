@@ -1,0 +1,17 @@
+BASEBALL TRACKER PRO V4 — GITHUB PAGES CHECKLIST
+
+[ ] 1. Supabase SQL Editor에서 supabase-schema.sql 전체 실행
+[ ] 2. Supabase > Connect에서 Project URL 복사
+[ ] 3. supabase-config.js의 YOUR-PROJECT-REF URL을 실제 Project URL로 변경
+       - Publishable key는 이미 입력됨
+       - Secret/service_role 키 사용 금지
+[ ] 4. GitHub에서 새 Public repository 생성 (추천 이름: baseball-tracker)
+[ ] 5. ZIP을 푼 뒤 '폴더 안 파일 전체'를 repository root에 업로드
+       index.html이 첫 화면(root)에 보여야 함
+[ ] 6. Settings > Pages > Deploy from a branch
+[ ] 7. Branch = main / Folder = /(root) / Save
+[ ] 8. 생성된 github.io 주소 접속
+[ ] 9. Supabase Authentication > URL Configuration > Site URL을 github.io 주소로 설정
+[ ] 10. 앱 설정 > 로그인 > 선수 추가 > 상단에서 선수 전환 테스트
+[ ] 11. 모바일/태블릿에서 동일 계정 로그인 후 동기화 테스트
+[ ] 12. 모바일 홈 화면에 앱 설치

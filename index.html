@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1f33" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Baseball Tracker" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="color-scheme" content="light" />
+  <title>Baseball Tracker Pro V4</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">BT</div>
+        <div>
+          <div class="eyebrow">BASEBALL TRACKER</div>
+          <h1 id="pageTitle">오늘</h1>
+        </div>
+      </div>
+      <button class="athlete-switcher" id="athleteSwitcher" type="button" aria-label="선수 선택">
+        <span class="athlete-avatar" id="athleteInitial">P</span>
+        <span class="athlete-switch-copy"><small>ATHLETE</small><strong id="activeAthleteName">선수 1</strong></span>
+        <span class="athlete-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div class="topbar-actions">
+        <button class="cloud-pill local" id="cloudPill" type="button">로컬</button>
+        <button class="install-mini" id="installMini" type="button">앱 설치</button>
+        <div class="date-pill" id="todayLabel"></div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- TODAY -->
+      <section class="view active" data-view="today">
+        <div class="page-intro">
+          <div>
+            <p class="kicker">TODAY OVERVIEW</p>
+            <h2>오늘의 훈련과 경기</h2>
+          </div>
+          <span class="status-note">자동 저장</span>
+        </div>
+
+        <section class="hero-card">
+          <div class="hero-head">
+            <div>
+              <div class="hero-label">TODAY WORKLOAD</div>
+              <p>오늘 누적 활동을 한눈에 확인합니다.</p>
+            </div>
+            <span class="hero-chip">LIVE</span>
+          </div>
+          <div class="hero-grid four">
+            <div class="hero-metric primary">
+              <div class="hero-number" id="todayThrows">0</div>
+              <div class="hero-unit">TOTAL THROWS</div>
+            </div>
+            <div class="hero-metric">
+              <div class="hero-number" id="todayTLU">0</div>
+              <div class="hero-unit">THROWING LOAD</div>
+            </div>
+            <div class="hero-metric">
+              <div class="hero-number" id="todaySwings">0</div>
+              <div class="hero-unit">TRAINING SWINGS</div>
+            </div>
+            <div class="hero-metric">
+              <div class="hero-number" id="rolling7">0</div>
+              <div class="hero-unit">7-DAY TLU</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <div><p class="section-kicker">QUICK START</p><h2>바로 기록하기</h2></div>
+        </div>
+        <div class="quick-grid">
+          <button class="quick-card game" data-go="gamePitch" type="button">
+            <span class="quick-icon">G</span><span><b>경기 투구</b><small>볼 · 스트라이크 · 예외 이벤트</small></span><i>→</i>
+          </button>
+          <button class="quick-card" data-go="throwing" type="button">
+            <span class="quick-icon">T</span><span><b>훈련 투구</b><small>강도별 투구수와 TLU</small></span><i>→</i>
+          </button>
+          <button class="quick-card" data-go="hitting" type="button">
+            <span class="quick-icon">H</span><span><b>타격 · 주루</b><small>타석 결과 · 도루 · 타격 훈련</small></span><i>→</i>
+          </button>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="dashboard-panel">
+            <div class="panel-head">
+              <div><p class="section-kicker">THROWING</p><h2>투구 부하</h2></div>
+              <button class="text-btn" data-go="throwing" type="button">상세 기록</button>
+            </div>
+            <div class="stat-grid three">
+              <article class="stat-card intensity-light"><span>가벼운</span><strong id="todayLight">0</strong><small>&lt;70%</small></article>
+              <article class="stat-card intensity-moderate"><span>적정</span><strong id="todayModerate">0</strong><small>약 80%</small></article>
+              <article class="stat-card intensity-full"><span>전력</span><strong id="todayFull">0</strong><small>100%</small></article>
+            </div>
+            <div class="single-stat">
+              <span>경기 투구</span><strong id="todayGamePitches">0</strong><small>모두 1.00 TLU</small>
+            </div>
+          </section>
+
+          <section class="dashboard-panel">
+            <div class="panel-head">
+              <div><p class="section-kicker">GAME PERFORMANCE</p><h2>경기 지표</h2></div>
+              <button class="text-btn" data-go="gamePitch" type="button">경기 모드</button>
+            </div>
+            <div class="metric-row">
+              <div><span>STRIKE RATE</span><strong id="todayStrikePct">—</strong></div>
+              <div><span>FIRST PITCH</span><strong id="todayFPSPct">—</strong></div>
+              <div><span>K / BB</span><strong id="todayKBB">0 / 0</strong></div>
+            </div>
+            <div class="metric-row second-row">
+              <div><span>AVG</span><strong id="todayAVG">—</strong></div>
+              <div><span>OPS</span><strong id="todayOPS">—</strong></div>
+              <div><span>SB / CS</span><strong id="todaySBCS">0 / 0</strong></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- THROWING -->
+      <section class="view" data-view="throwing">
+        <div class="page-intro">
+          <div><p class="kicker">THROWING SESSION</p><h2>훈련 투구 기록</h2></div>
+          <span class="status-note">강도별 +1</span>
+        </div>
+        <div class="throwing-layout">
+          <div class="throwing-summary">
+            <div class="counter-card">
+              <div class="counter-label">TODAY TRAINING THROWS</div>
+              <div class="counter-value" id="trainingThrowTotal">0</div>
+              <div class="counter-sub"><strong id="trainingTLU">0</strong> TLU</div>
+            </div>
+            <div class="context-card">
+              <div class="section-head compact"><div><p class="section-kicker">SESSION TYPE</p><h2>훈련 구분</h2></div></div>
+              <div class="segmented" id="throwContext">
+                <button class="active" data-context="warmup" type="button">몸풀기</button>
+                <button data-context="defense" type="button">수비송구</button>
+                <button data-context="bullpen" type="button">불펜</button>
+                <button data-context="other" type="button">기타</button>
+              </div>
+              <div class="mini-breakdown" id="throwContextBreakdown"></div>
+            </div>
+          </div>
+          <div class="input-panel">
+            <div class="panel-head"><div><p class="section-kicker">INTENSITY</p><h2>투구 강도</h2></div><span class="microcopy">한 번 누르면 +1</span></div>
+            <div class="big-actions">
+              <button class="throw-btn light" data-throw-intensity="light" type="button">
+                <span><b>가벼운</b><em>+1</em></span><small>&lt;70% effort</small><i>0.75 TLU</i>
+              </button>
+              <button class="throw-btn moderate" data-throw-intensity="moderate" type="button">
+                <span><b>적정</b><em>+1</em></span><small>약 80% effort</small><i>0.85 TLU</i>
+              </button>
+              <button class="throw-btn full" data-throw-intensity="full" type="button">
+                <span><b>전력</b><em>+1</em></span><small>100% effort</small><i>1.00 TLU</i>
+              </button>
+            </div>
+            <button class="undo-btn" id="undoTrainingThrow" type="button">↶ 마지막 훈련 투구 취소</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- GAME PITCH -->
+      <section class="view" data-view="gamePitch">
+        <div class="page-intro game-intro">
+          <div><p class="kicker live-kicker">LIVE GAME</p><h2>경기 투구 기록</h2></div>
+          <span class="status-note strong">모든 경기 투구 = 1.00 TLU</span>
+        </div>
+        <div class="game-layout">
+          <aside class="game-side">
+            <div class="game-status-card">
+              <div class="scoreboard-label"><span>COUNT</span><b>BATTER <strong id="currentBatterNo">1</strong></b></div>
+              <div class="count-box">
+                <div class="ball-count"><span>BALL</span><strong id="ballCount">0</strong></div>
+                <div class="strike-count"><span>STRIKE</span><strong id="strikeCount">0</strong></div>
+              </div>
+              <div class="game-totals">
+                <div><span>PITCHES</span><strong id="gamePitchCount">0</strong></div>
+                <div><span>STRIKE%</span><strong id="gameStrikePct">—</strong></div>
+                <div><span>1ST PITCH</span><strong id="gameFPSPct">—</strong></div>
+              </div>
+              <div class="batter-line">현재 타자 #<strong id="currentBatterNoMirror" aria-hidden="true">—</strong><span>실시간 볼카운트 자동 계산</span></div>
+            </div>
+            <div class="summary-card">
+              <div class="panel-head"><div><p class="section-kicker">GAME LINE</p><h2>현재 경기</h2></div></div>
+              <div class="game-summary-strip">
+                <span><small>K</small><b id="gameK">0</b></span>
+                <span><small>BB</small><b id="gameBB">0</b></span>
+                <span><small>HBP</small><b id="gameHBP">0</b></span>
+                <span><small>WP</small><b id="gameWP">0</b></span>
+                <span><small>BALK</small><b id="gameBalk">0</b></span>
+              </div>
+            </div>
+          </aside>
+
+          <div class="game-control">
+            <section class="input-panel pitch-panel">
+              <div class="panel-head"><div><p class="section-kicker">PITCH RESULT</p><h2>투구 결과</h2></div><span class="microcopy">실제 투구 +1</span></div>
+              <div class="pitch-actions">
+                <button class="pitch-btn ball" data-pitch-result="ball" type="button"><span>BALL</span><small>볼</small></button>
+                <div class="pitch-grid">
+                  <button class="pitch-btn strike" data-pitch-result="called" type="button"><span>CALLED</span><small>루킹</small></button>
+                  <button class="pitch-btn strike" data-pitch-result="swinging" type="button"><span>SWING</span><small>헛스윙</small></button>
+                  <button class="pitch-btn strike" data-pitch-result="foul" type="button"><span>FOUL</span><small>파울</small></button>
+                  <button class="pitch-btn strike" data-pitch-result="inplay" type="button"><span>IN PLAY</span><small>인플레이</small></button>
+                </div>
+                <button class="pitch-btn hbp" data-pitch-result="hbp" type="button"><span>HBP</span><small>사구</small></button>
+              </div>
+            </section>
+
+            <div class="event-panels">
+              <section class="input-panel compact-panel">
+                <div class="panel-head"><div><p class="section-kicker">ATTACH TO LAST PITCH</p><h2>직전 투구 이벤트</h2></div><span class="microcopy">투구수 +0</span></div>
+                <div class="chip-row">
+                  <button class="chip" data-secondary="WP" type="button">폭투 <b>WP</b></button>
+                  <button class="chip" data-secondary="PB" type="button">포일 <b>PB</b></button>
+                  <button class="chip" data-secondary="D3K" type="button">낫아웃 <b>D3K</b></button>
+                </div>
+              </section>
+              <section class="input-panel compact-panel">
+                <div class="panel-head"><div><p class="section-kicker">GAME EVENT</p><h2>기타 경기 이벤트</h2></div><span class="microcopy">투구수 · TLU +0</span></div>
+                <div class="event-grid">
+                  <button class="event-btn" data-game-event="BALK" type="button">보크</button>
+                  <button class="event-btn positive" data-game-event="SB" type="button">도루 성공</button>
+                  <button class="event-btn" data-game-event="CS" type="button">도루 실패</button>
+                  <button class="event-btn" data-game-event="PO" type="button">견제사</button>
+                  <button class="event-btn" data-game-event="IBB" type="button">무투구 IBB</button>
+                  <button class="event-btn next" id="manualNextBatter" type="button">다음 타자 →</button>
+                </div>
+              </section>
+            </div>
+            <button class="undo-btn prominent" id="undoGameAction" type="button">↶ 마지막 경기 입력 취소</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HITTING -->
+      <section class="view" data-view="hitting">
+        <div class="page-intro">
+          <div><p class="kicker">HITTING & BASERUNNING</p><h2>타격 · 주루 기록</h2></div>
+          <span class="status-note">결과 중심 입력</span>
+        </div>
+        <div class="mode-switch-wrap">
+          <div class="segmented mode-switch" id="hittingMode">
+            <button class="active" data-hmode="game" type="button">경기 타격</button>
+            <button data-hmode="training" type="button">타격 훈련</button>
+          </div>
+        </div>
+
+        <div id="gameHittingPanel">
+          <div class="hitting-layout">
+            <div class="counter-card hitting-counter">
+              <div class="counter-label">TODAY AT THE PLATE</div>
+              <div class="hitting-line"><b id="hittingPA">0 PA</b><span id="hittingSlash">AVG — · OBP — · SLG —</span></div>
+            </div>
+            <section class="input-panel">
+              <div class="panel-head"><div><p class="section-kicker">PLATE APPEARANCE</p><h2>타석 결과</h2></div><span class="microcopy">1회 터치 = 1 PA</span></div>
+              <div class="hit-grid">
+                <button class="hit-positive" data-hit="1B" type="button">1B<small>안타</small></button>
+                <button class="hit-positive" data-hit="2B" type="button">2B<small>2루타</small></button>
+                <button class="hit-positive" data-hit="3B" type="button">3B<small>3루타</small></button>
+                <button class="hit-positive" data-hit="HR" type="button">HR<small>홈런</small></button>
+                <button data-hit="BB" type="button">BB<small>볼넷</small></button>
+                <button data-hit="HBP" type="button">HBP<small>사구</small></button>
+                <button data-hit="SO" type="button">SO<small>삼진</small></button>
+                <button data-hit="OUT" type="button">OUT<small>범타</small></button>
+                <button data-hit="ROE" type="button">ROE<small>실책출루</small></button>
+                <button data-hit="SF" type="button">SF<small>희생플라이</small></button>
+              </div>
+            </section>
+          </div>
+          <section class="input-panel baserun-panel">
+            <div class="panel-head"><div><p class="section-kicker">BASERUNNING</p><h2>주루 이벤트</h2></div><span class="microcopy">타석과 별도 기록</span></div>
+            <div class="event-grid two-col">
+              <button class="event-btn positive" data-base-event="SB" type="button">도루 성공 <b>SB</b></button>
+              <button class="event-btn" data-base-event="CS" type="button">도루 실패 <b>CS</b></button>
+            </div>
+          </section>
+          <button class="undo-btn" id="undoHitting" type="button">↶ 마지막 타격/주루 입력 취소</button>
+        </div>
+
+        <div id="trainingHittingPanel" hidden>
+          <div class="hitting-layout training-hit-layout">
+            <div>
+              <div class="counter-card hitting-counter">
+                <div class="counter-label">TODAY TRAINING SWINGS</div>
+                <div class="hitting-line"><b id="trainingSwingTotal">0 swings</b><span id="trainingContactPct">Contact — · 강한 타구 —</span></div>
+              </div>
+              <div class="context-card training-type-card">
+                <div class="panel-head"><div><p class="section-kicker">DRILL TYPE</p><h2>훈련 유형</h2></div></div>
+                <div class="segmented small" id="trainingHitType">
+                  <button class="active" data-htype="tee" type="button">티배팅</button>
+                  <button data-htype="toss" type="button">토스</button>
+                  <button data-htype="bp" type="button">배팅볼</button>
+                  <button data-htype="live" type="button">라이브</button>
+                </div>
+              </div>
+            </div>
+            <section class="input-panel">
+              <div class="panel-head"><div><p class="section-kicker">CONTACT QUALITY</p><h2>스윙 결과</h2></div><span class="microcopy">스윙마다 +1</span></div>
+              <div class="quality-grid">
+                <button data-swing-quality="whiff" type="button"><b>헛스윙</b><small>WHIFF</small></button>
+                <button data-swing-quality="weak" type="button"><b>약한 타구</b><small>WEAK</small></button>
+                <button data-swing-quality="normal" type="button"><b>보통 타구</b><small>NORMAL</small></button>
+                <button class="hard-contact" data-swing-quality="hard" type="button"><b>강한 타구</b><small>HARD</small></button>
+              </div>
+              <button class="undo-btn" id="undoTrainingSwing" type="button">↶ 마지막 스윙 취소</button>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="view" data-view="history">
+        <div class="page-intro">
+          <div><p class="kicker">PERFORMANCE HISTORY</p><h2>기록 · 부하 추세</h2></div>
+          <span class="status-note">최근 데이터</span>
+        </div>
+        <div class="history-kpis">
+          <article class="history-kpi"><span>7-DAY LOAD</span><strong id="history7TLU">0</strong><small>TLU</small></article>
+          <article class="history-kpi"><span>28-DAY LOAD</span><strong id="history28TLU">0</strong><small>TLU</small></article>
+        </div>
+        <div class="chart-card">
+          <div class="panel-head"><div><p class="section-kicker">WORKLOAD TREND</p><h2>최근 7일 TLU</h2></div></div>
+          <div class="bar-chart" id="tluChart"></div>
+        </div>
+        <div class="section-head"><div><p class="section-kicker">DAILY LOG</p><h2>날짜별 기록</h2></div></div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" data-view="settings">
+        <div class="page-intro">
+          <div><p class="kicker">APP SETTINGS</p><h2>설정</h2></div>
+          <span class="status-note">PWA · Cloud</span>
+        </div>
+
+        <div class="settings-grid">
+          <section class="settings-card athlete-card">
+            <div class="settings-title-row">
+              <div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div>
+              <span class="athlete-count" id="athleteCount">1명</span>
+            </div>
+            <p>한 계정에서 여러 선수를 관리합니다. 상단에서 선수를 바꾸면 모든 투구·타격·주루·통계가 해당 선수 기준으로 전환됩니다.</p>
+            <div class="athlete-list" id="athleteList"></div>
+            <div class="settings-actions athlete-actions">
+              <button id="addAthleteBtn" type="button">+ 선수 추가</button>
+              <button class="secondary" id="editAthleteBtn" type="button">현재 선수 수정</button>
+            </div>
+          </section>
+
+          <section class="settings-card cloud-card">
+            <div class="settings-title-row">
+              <div><p class="section-kicker">CLOUD SYNC</p><h2>클라우드 동기화</h2></div>
+              <span class="cloud-badge local" id="cloudBadge">로컬</span>
+            </div>
+            <div class="cloud-status-line"><span id="cloudStatusText">로컬 저장</span><small id="cloudLastSync"></small></div>
+
+            <div class="setup-note" id="cloudNotConfigured">
+              Supabase가 아직 설정되지 않았습니다. <code>supabase-config.js</code>에 Project URL과 Publishable key를 입력하면 여러 기기 동기화를 사용할 수 있습니다.
+            </div>
+
+            <div id="cloudLoggedOut" hidden>
+              <div class="auth-fields">
+                <label><span>EMAIL</span><input id="authEmail" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" /></label>
+                <label><span>PASSWORD</span><input id="authPassword" type="password" autocomplete="current-password" placeholder="6자 이상" /></label>
+              </div>
+              <div class="settings-actions cloud-actions">
+                <button id="signInBtn" type="button">로그인</button>
+                <button class="secondary" id="signUpBtn" type="button">새 계정 만들기</button>
+              </div>
+            </div>
+
+            <div id="cloudLoggedIn" hidden>
+              <div class="account-row"><span>로그인 계정</span><strong id="cloudUserEmail">로그인됨</strong></div>
+              <p class="subtle">한 번 로그인하면 이 기기에서는 로그인 상태가 유지됩니다.</p>
+              <div class="settings-actions cloud-actions">
+                <button id="syncNowBtn" type="button">지금 동기화</button>
+                <button class="secondary" id="signOutBtn" type="button">로그아웃</button>
+              </div>
+              <button class="danger-link" id="deleteCloudData" type="button">클라우드 + 로컬 기록 전체 삭제</button>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <p class="section-kicker">WORKLOAD MODEL</p><h2>투구 부하 기준</h2>
+            <p>훈련 투구는 상대적 부하 지표(TLU)로 계산합니다. 경기 투구는 모두 전력으로 고정합니다.</p>
+            <div class="settings-row"><span>가벼운 &lt;70%</span><b>0.75 TLU</b></div>
+            <div class="settings-row"><span>적정 약 80%</span><b>0.85 TLU</b></div>
+            <div class="settings-row"><span>전력 100%</span><b>1.00 TLU</b></div>
+            <div class="settings-row"><span>경기 투구</span><b>1.00 TLU</b></div>
+          </section>
+
+          <section class="settings-card">
+            <p class="section-kicker">METRIC DEFINITION</p><h2>Strike% 정의</h2>
+            <p>루킹·헛스윙·파울·인플레이를 Strike 계열로, BALL을 Ball 계열로 계산합니다. HBP는 실제 투구수/TLU에는 포함하지만 Strike% 분모에서는 제외합니다.</p>
+          </section>
+
+          <section class="settings-card">
+            <p class="section-kicker">INSTALL</p><h2>휴대폰 · 태블릿 설치</h2>
+            <p>GitHub Pages 주소를 연 뒤 홈 화면에 설치하면 일반 앱처럼 전체 화면으로 실행할 수 있습니다.</p>
+            <div class="settings-actions"><button id="installApp" type="button">이 기기에 앱 설치</button></div>
+            <p class="subtle" id="installHint">Android Chrome 또는 iPhone/iPad Safari에서 사용할 수 있습니다.</p>
+          </section>
+
+          <section class="settings-card">
+            <p class="section-kicker">BACKUP</p><h2>데이터 관리</h2>
+            <div class="settings-actions">
+              <button id="exportData" type="button">JSON 내보내기</button>
+              <label class="file-label">JSON 불러오기<input id="importData" type="file" accept="application/json" /></label>
+              <button class="danger" id="resetData" type="button">이 기기 로컬 데이터 삭제</button>
+            </div>
+            <p class="subtle">입력은 먼저 기기에 저장되고, 로그인 상태에서는 Supabase와 동기화됩니다.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="주요 메뉴">
+      <button class="active" data-nav="today" type="button"><span class="nav-icon">01</span><span>오늘</span></button>
+      <button data-nav="throwing" type="button"><span class="nav-icon">02</span><span>투구</span></button>
+      <button data-nav="gamePitch" type="button"><span class="nav-icon game-nav">G</span><span>경기</span></button>
+      <button data-nav="hitting" type="button"><span class="nav-icon">03</span><span>타격</span></button>
+      <button data-nav="history" type="button"><span class="nav-icon">04</span><span>기록</span></button>
+      <button data-nav="settings" type="button"><span class="nav-icon">••</span><span>설정</span></button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal" id="athletePickerModal" hidden>
+    <div class="modal-card">
+      <div class="modal-title-row">
+        <div><div class="modal-kicker">SELECT ATHLETE</div><h2>선수 선택</h2></div>
+        <button class="modal-x" id="closeAthletePicker" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="athlete-list picker-list" id="athletePickerList"></div>
+      <button class="primary-action" id="pickerAddAthlete" type="button">+ 새 선수 추가</button>
+    </div>
+  </div>
+
+  <div class="modal" id="athleteModal" hidden>
+    <div class="modal-card athlete-modal-card">
+      <div class="modal-kicker">ATHLETE PROFILE</div>
+      <div class="modal-title-row"><h2 id="athleteModalTitle">선수 추가</h2><button class="modal-x" id="closeAthleteModal" type="button" aria-label="닫기">×</button></div>
+      <form id="athleteForm">
+        <input id="athleteId" type="hidden" />
+        <div class="athlete-form-grid">
+          <label class="full"><span>선수 이름 *</span><input id="athleteName" type="text" maxlength="30" autocomplete="off" placeholder="예: 김민수" required /></label>
+          <label><span>등번호</span><input id="athleteNumber" type="text" maxlength="5" inputmode="numeric" placeholder="18" /></label>
+          <label><span>생년월일</span><input id="athleteBirthDate" type="date" /></label>
+          <label class="full"><span>팀</span><input id="athleteTeam" type="text" maxlength="60" placeholder="예: 성남중" /></label>
+          <label class="full"><span>포지션</span><input id="athletePosition" type="text" maxlength="40" placeholder="예: P / SS" /></label>
+          <label><span>투구</span><select id="athleteThrows"><option value="R">우투</option><option value="L">좌투</option><option value="S">양투</option></select></label>
+          <label><span>타격</span><select id="athleteBats"><option value="R">우타</option><option value="L">좌타</option><option value="S">양타</option></select></label>
+        </div>
+        <div class="athlete-modal-actions">
+          <button class="primary-action" type="submit">저장</button>
+          <button class="danger-outline" id="deleteAthleteBtn" type="button" hidden>선수 삭제</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="inplayModal" hidden>
+    <div class="modal-card">
+      <div class="modal-kicker">PITCH RESULT</div>
+      <h2>인플레이 결과</h2>
+      <p>투구수는 이미 1구 기록되었습니다. 타구 결과만 선택하세요.</p>
+      <div class="hit-grid modal-hit-grid">
+        <button data-inplay="OUT" type="button">OUT<small>아웃</small></button>
+        <button data-inplay="1B" type="button">1B<small>안타</small></button>
+        <button data-inplay="2B" type="button">2B<small>2루타</small></button>
+        <button data-inplay="3B" type="button">3B<small>3루타</small></button>
+        <button data-inplay="HR" type="button">HR<small>홈런</small></button>
+        <button data-inplay="ROE" type="button">ROE<small>실책</small></button>
+      </div>
+      <button class="undo-btn" id="closeInplayModal" type="button">나중에 입력</button>
+    </div>
+  </div>
+
+  <div class="modal" id="installModal" hidden>
+    <div class="modal-card">
+      <div class="modal-kicker">PWA INSTALL</div>
+      <h2>홈 화면에 설치</h2>
+      <p id="installInstructions"></p>
+      <button class="primary-action" id="closeInstallModal" type="button">확인</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
