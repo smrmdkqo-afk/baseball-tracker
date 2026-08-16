@@ -17,29 +17,12 @@ const EVENT_LABELS = {
 
 let state = loadState();
 let currentView = 'home';
-let gameTab = 'pitching';
-let trainingTab = 'throwing';
-let throwContext = 'warmup';
-let trainingHitType = 'tee';
-let logFilter = 'all';
-let logSessionFilter = 'all';
+let currentTab = 'pitching';
+let recordDate = localDateKey();
+let sessionType = null;
 let toastTimer = null;
 let undoDeleteTimer = null;
 let lastDeletedEventId = null;
-let pendingInplayEventId = null;
-let pitchDraft = {
-  result: null,
-  inplayResult: '',
-  inning: 1,
-  half: 'top',
-  outs: 0,
-  balls: 0,
-  strikes: 0,
-  ourScore: 0,
-  opponentScore: 0,
-  runners: {1:false,2:false,3:false},
-  editingEventId: null
-};
 let deferredInstallPrompt = null;
 
 const cloud = {
@@ -252,60 +235,92 @@ function deleteAthlete(){ const id=document.getElementById('athleteId').value;co
 
 function renderHome(){
   const ev=athleteEvents(),today=localDateKey(),todayEv=ev.filter(e=>dateFromIso(e.occurredAt)===today),thr=calcThrowing(todayEv),hit=calcHitting(todayEv),base=calcBase(todayEv),pitch=derivePitchingAggregate(todayEv);
-  document.getElementById('homeThrows').textContent=thr.total;document.getElementById('homeTLU').textContent=one(thr.tlu);document.getElementById('homePA').textContent=hit.PA;document.getElementById('homeTrainingSwings').textContent=calcTrainingHits(todayEv).total;document.getElementById('homeGamePitches').textContent=thr.game;document.getElementById('homeTrainingThrows').textContent=thr.training;document.getElementById('home7TLU').textContent=one(rollingTLU(7));document.getElementById('homeStrikePct').textContent=pct(pitch.strikePct);document.getElementById('homeAVG').textContent=decimal(hit.avg);document.getElementById('homeSBCS').textContent=`${base.sb} / ${base.cs}`;
-  const active=activeSession(),banner=document.getElementById('activeSessionBanner');if(active){const isGame=active.type==='game';banner.hidden=false;banner.innerHTML=`<div><b>${isGame?'LIVE GAME':'TRAINING'} · ${esc(isGame?(active.item.opponent||'상대팀 미입력'):(active.item.title||'훈련'))}</b><small>${fmtLongDate(active.item.date)} · 기록 중</small></div><button data-action="resume-session" type="button">이어하기</button>`;}else banner.hidden=true;
+  document.getElementById('homeThrows').textContent=thr.total;
+  document.getElementById('homeTLU').textContent=one(thr.tlu);
+  document.getElementById('homePA').textContent=hit.PA;
+  document.getElementById('homeSwings').textContent=calcTrainingHits(todayEv).total;
   renderSessionList('homeRecentSessions',4);
 }
 function sessionListData(){ const games=athleteGames().map(item=>({type:'game',item,date:item.date,ts:item.startedAt||`${item.date}T12:00:00`}));const training=athleteTrainings().map(item=>({type:'training',item,date:item.date,ts:item.startedAt||`${item.date}T12:00:00`}));return [...games,...training].sort((a,b)=>new Date(b.ts)-new Date(a.ts)); }
 function renderSessionList(id,limit=20){ const arr=sessionListData().slice(0,limit),el=document.getElementById(id);if(!arr.length){el.innerHTML='<div class="session-item"><div class="session-copy"><b>아직 기록이 없습니다</b><small>경기 또는 훈련을 시작해보세요.</small></div></div>';return;}el.innerHTML=arr.map(s=>{const game=s.type==='game',item=s.item,events=athleteEvents().filter(e=>game?e.gameId===item.id:e.trainingSessionId===item.id),summary=game?`${calcThrowing(events).game} pitches · ${calcHitting(events).PA} PA`:`${calcThrowing(events).training} throws · ${calcTrainingHits(events).total} swings`;return `<article class="session-item ${s.type}"><span class="session-type">${game?'G':'T'}</span><span class="session-copy"><b>${game?`vs ${esc(item.opponent||'상대팀 미입력')}`:esc(item.title||'훈련')}</b><small>${fmtLongDate(item.date)} · ${summary}${item.status==='live'?' · 진행 중':''}</small></span><button data-open-session="${s.type}:${item.id}" type="button">열기</button></article>`;}).join(''); }
 function renderRecord(){
-  const select=document.getElementById('recordSessionPicker');
-  if(select){
-    const sessions=sessionListData();
-    const current=activeSession();
-    const options=[`<option value="">세션 선택</option>`];
-    for(const s of sessions){
-      const label=s.type==='game'?`경기 · ${s.item.opponent||'상대팀 미입력'}`:`훈련 · ${s.item.title||'훈련'}`;
-      const selected=current && current.type===s.type && current.item.id===s.item.id ? 'selected' : '';
-      options.push(`<option value="${s.type}:${s.item.id}" ${selected}>${fmtLongDate(s.item.date)} · ${label}</option>`);
-    }
-    options.push('<option value="new-game">+ 새 경기 만들기</option>');
-    options.push('<option value="new-training">+ 새 훈련 시작</option>');
-    select.innerHTML=options.join('');
-    if(current){select.value=`${current.type}:${current.item.id}`;} else if(select.value==='')select.value='';
-  }
-  renderWorkspace();
-  renderSessionList('recordSessionList',30);
-}
-function renderWorkspace(){
-  const wrap=document.getElementById('sessionWorkspace'),s=activeSession();if(!s){wrap.hidden=true;return;}wrap.hidden=false;const game=s.type==='game',item=s.item;document.getElementById('workspaceKicker').textContent=game?'GAME SESSION':'TRAINING SESSION';document.getElementById('workspaceTitle').textContent=game?`vs ${item.opponent||'상대팀 미입력'}`:(item.title||'훈련');document.getElementById('workspaceMeta').textContent=`${fmtLongDate(item.date)}${game&&item.venue?` · ${item.venue}`:''}${item.status==='live'?' · 진행 중':' · 종료됨'}`;document.getElementById('endSessionBtn').textContent=item.status==='live'?'종료':'다시 열기';document.getElementById('gameTabs').hidden=!game;document.getElementById('trainingTabs').hidden=game;
-  ['gamePitchPanel','gameHitPanel','gameDefensePanel','gameBasePanel','trainingThrowPanel','trainingHitPanel','trainingDefensePanel','trainingBasePanel'].forEach(id=>document.getElementById(id).hidden=true);
-  if(game){document.querySelectorAll('[data-game-tab]').forEach(b=>b.classList.toggle('active',b.dataset.gameTab===gameTab));const map={pitching:'gamePitchPanel',defense:'gameDefensePanel',hitting:'gameHitPanel',baserunning:'gameBasePanel'};document.getElementById(map[gameTab]).hidden=false;renderGameWorkspace(item);}else{document.querySelectorAll('[data-training-tab]').forEach(b=>b.classList.toggle('active',b.dataset.trainingTab===trainingTab));const map={throwing:'trainingThrowPanel',defense:'trainingDefensePanel',hitting:'trainingHitPanel',baserunning:'trainingBasePanel'};document.getElementById(map[trainingTab]).hidden=false;renderTrainingWorkspace(item);}
-}
-function syncPitchDraftFromAppearance(appearance){
-  if(!appearance){
-    pitchDraft = {...pitchDraft, result:null, inplayResult:'', inning:1, half:'top', outs:0, balls:0, strikes:0, ourScore:0, opponentScore:0, runners:{1:false,2:false,3:false}, editingEventId:null};
+  // 날짜 선택
+  const dateInput=document.getElementById('recordDate');
+  if(dateInput) dateInput.value=recordDate;
+
+  // 경기/훈련 선택
+  const gameRadio=document.getElementById('sessionTypeGame');
+  const trainingRadio=document.getElementById('sessionTypeTraining');
+  if(gameRadio) gameRadio.checked=(sessionType==='game');
+  if(trainingRadio) trainingRadio.checked=(sessionType==='training');
+
+  // recordDate와 sessionType이 모두 설정되었는지 확인
+  const hasSelection = recordDate && sessionType;
+  
+  if(!hasSelection){
+    document.getElementById('recordContent').hidden=true;
+    document.getElementById('recordEmpty').hidden=false;
     return;
   }
-  pitchDraft = {
-    ...pitchDraft,
-    inning: Number(appearance.inning || 1),
-    half: appearance.half || 'top',
-    outs: Number(appearance.outs || 0),
-    ourScore: Number(appearance.ourScore || 0),
-    opponentScore: Number(appearance.opponentScore || 0),
-    runners: {1:!!appearance.runner1,2:!!appearance.runner2,3:!!appearance.runner3},
-    balls: Number(pitchDraft.balls || 0),
-    strikes: Number(pitchDraft.strikes || 0),
-    editingEventId: pitchDraft.editingEventId || null
-  };
-  const balls=document.getElementById('pitchBalls'); const strikes=document.getElementById('pitchStrikes');
-  if(balls) balls.value=pitchDraft.balls;
-  if(strikes) strikes.value=pitchDraft.strikes;
-  const fields=['pitchInning','pitchHalf','pitchOuts','pitchOurScore','pitchOppScore','pitchRunner1','pitchRunner2','pitchRunner3'];
-  for(const id of fields){ const el=document.getElementById(id); if(!el) continue; if(id==='pitchInning') el.value=pitchDraft.inning; else if(id==='pitchHalf') el.value=pitchDraft.half; else if(id==='pitchOuts') el.value=pitchDraft.outs; else if(id==='pitchOurScore') el.value=pitchDraft.ourScore; else if(id==='pitchOppScore') el.value=pitchDraft.opponentScore; else if(id==='pitchRunner1') el.checked = !!pitchDraft.runners[1]; else if(id==='pitchRunner2') el.checked = !!pitchDraft.runners[2]; else if(id==='pitchRunner3') el.checked = !!pitchDraft.runners[3]; }
-  const inplayWrap=document.getElementById('pitchInplayWrap'); const inplaySelect=document.getElementById('pitchInplayResult'); if(inplayWrap) inplayWrap.style.display = pitchDraft.result === 'inplay' ? '' : 'none'; if(inplaySelect) { inplaySelect.hidden = pitchDraft.result !== 'inplay'; if(pitchDraft.inplayResult) inplaySelect.value = pitchDraft.inplayResult; }
-  const saveBtn=document.getElementById('pitchDraftSave'); if(saveBtn) saveBtn.disabled = !pitchDraft.result;
+
+  document.getElementById('recordContent').hidden=false;
+  document.getElementById('recordEmpty').hidden=true;
+
+  // 날짜 + 타입에 맞는 세션 찾기
+  let session=null;
+  if(sessionType==='game'){
+    session=athleteGames().find(g=>g.date===recordDate);
+  } else {
+    session=athleteTrainings().find(s=>s.date===recordDate);
+  }
+
+  // 헤더 업데이트
+  const isGame=sessionType==='game';
+  document.getElementById('workspaceKicker').textContent=isGame?'GAME':'TRAINING';
+  if(session){
+    document.getElementById('workspaceTitle').textContent=isGame?`vs ${session.opponent||'상대팀 미입력'}`:session.title||'훈련';
+    document.getElementById('workspaceMeta').textContent=fmtLongDate(recordDate);
+  } else {
+    document.getElementById('workspaceTitle').textContent=isGame?'경기':'훈련';
+    document.getElementById('workspaceMeta').textContent=fmtLongDate(recordDate);
+  }
+
+  // 탭 업데이트
+  document.querySelectorAll('.tab-button').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.tab===currentTab);
+  });
+
+  // 로그 렌더링
+  renderRecordLog(session);
+}
+
+function renderRecordLog(session){
+  const el=document.getElementById('recordLogList');
+  if(!el) return;
+
+  if(!session){
+    el.innerHTML='<div class="log-item empty"><small>기록이 없습니다</small></div>';
+    document.getElementById('recordLogCount').textContent='0 events';
+    return;
+  }
+
+  const isGame=sessionType==='game';
+  const events=athleteEvents().filter(e=>
+    isGame ? e.gameId===session.id : e.trainingSessionId===session.id
+  ).sort((a,b)=>new Date(b.occurredAt)-new Date(a.occurredAt));
+
+  document.getElementById('recordLogCount').textContent=`${events.length} events`;
+
+  if(!events.length){
+    el.innerHTML='<div class="log-item empty"><small>아직 기록이 없습니다</small></div>';
+    return;
+  }
+
+  const html=events.map(e=>{
+    const label=EVENT_LABELS[e.eventType]||e.eventType;
+    return `<article class="log-item" data-event-id="${e.id}"><span class="log-time">${timeText(e.occurredAt)}</span><span class="log-label">${esc(label)}</span><button class="log-edit" data-edit-event="${e.id}" type="button">수정</button></article>`;
+  }).join('');
+  el.innerHTML=html;
 }
 function applyPitchDraftToForm(patch={}){
   const next={...pitchDraft,...patch};
@@ -381,7 +396,7 @@ function contextLabel(v){ return ({warmup:'몸풀기',catchplay:'캐치볼',defe
 function trainingHitTypeLabel(v){ return ({tee:'티',toss:'토스',bp:'배팅볼',live:'라이브',other:'기타'})[v]||v||'기타'; }
 function drillLabel(v){ return ({infield:'내야',outfield:'외야',throwing:'송구',catching:'캐치',footwork:'풋워크',other:'기타'})[v]||v||'기타'; }
 function contactLabel(v){ return ({weak:'약',medium:'보통',hard:'강'})[v]||v||''; }
-function render(){document.getElementById('todayLabel').textContent=fmtLongDate(localDateKey());renderAthletes();renderHome();renderRecord();renderLogs();renderAnalysis();renderCloudAuth();renderCloudStatus();refreshInstallUI();}
+function render(){document.getElementById('todayLabel').textContent=fmtLongDate(localDateKey());renderAthletes();renderHome();renderRecord();renderAnalysis();renderCloudAuth();renderCloudStatus();refreshInstallUI();}
 function openNewGame(){document.getElementById('gameEditId').value='';document.getElementById('gameDate').value=localDateKey();document.getElementById('gameOpponent').value='';document.getElementById('gameVenue').value='';document.getElementById('gameCompetition').value='';document.getElementById('gameOurScore').value='';document.getElementById('gameOppScore').value='';openModal('gameModal');}
 function createGame(e){e.preventDefault();const id=document.getElementById('gameEditId').value,date=document.getElementById('gameDate').value||localDateKey();let g=id?state.games.find(x=>x.id===id&&!x.deletedAt):null;if(g){Object.assign(g,{date,opponent:document.getElementById('gameOpponent').value.trim(),venue:document.getElementById('gameVenue').value.trim(),competition:document.getElementById('gameCompetition').value.trim(),ourScore:numOrNull(document.getElementById('gameOurScore').value),opponentScore:numOrNull(document.getElementById('gameOppScore').value)});mark(g);saveState();closeModal('gameModal');render();showToast('경기 정보를 수정했습니다');return;}g=mark({id:uuid(),athleteId:state.activeAthleteId,date,opponent:document.getElementById('gameOpponent').value.trim(),venue:document.getElementById('gameVenue').value.trim(),competition:document.getElementById('gameCompetition').value.trim(),ourScore:numOrNull(document.getElementById('gameOurScore').value),opponentScore:numOrNull(document.getElementById('gameOppScore').value),status:'live',startedAt:iso(),endedAt:null,legacySource:null,deletedAt:null});state.games.push(g);state.activeSession={type:'game',id:g.id};gameTab='pitching';saveState();closeModal('gameModal');go('record');showToast('경기를 시작했습니다');}
 function openNewTraining(){document.getElementById('trainingEditId').value='';document.getElementById('trainingDate').value=localDateKey();document.getElementById('trainingTitle').value='';openModal('trainingModal');}
@@ -499,35 +514,35 @@ function isStandaloneMode(){return window.matchMedia('(display-mode: standalone)
 function refreshInstallUI(){const installed=isStandaloneMode(),mini=document.getElementById('installMini'),btn=document.getElementById('installApp'),hint=document.getElementById('installHint');if(mini)mini.hidden=installed;if(btn){btn.disabled=installed;btn.textContent=installed?'설치됨':'이 기기에 앱 설치';}if(hint&&installed)hint.textContent='현재 홈 화면 앱으로 실행 중입니다.';}
 async function installApp(){if(isStandaloneMode())return showToast('이미 앱으로 실행 중입니다');if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;refreshInstallUI();return;}showToast('브라우저 메뉴에서 홈 화면에 추가를 선택하세요');}
 
-function handleAction(action){if(action==='new-game')return openNewGame();if(action==='new-training')return openNewTraining();if(action==='resume-session')return go('record');if(action==='start-appearance')return openAppearance();if(action==='undo-last-event')return undoLastEvent();}
+function handleAction(action){if(action==='new-game')return openNewGame();if(action==='new-training')return openNewTraining();}
+
+// Record view 이벤트 리스너
+document.addEventListener('change',e=>{
+  if(e.target.id==='recordDate'){
+    recordDate=e.target.value;
+    render();
+  }
+  if(e.target.name==='sessionType'){
+    sessionType=e.target.value;
+    render();
+  }
+});
+
+// 탭 네비게이션
+document.addEventListener('click',e=>{
+  if(e.target.classList.contains('tab-button')){
+    currentTab=e.target.dataset.tab;
+    render();
+  }
+});
+
 document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
   if(t.dataset.nav)return go(t.dataset.nav);
   if(t.dataset.action)return handleAction(t.dataset.action);
   if(t.dataset.closeModal)return closeModal(t.dataset.closeModal);
   if(t.dataset.athleteSelect)return switchAthlete(t.dataset.athleteSelect);
-  if(t.dataset.openSession)return openSessionToken(t.dataset.openSession);
-  if(t.dataset.gameTab){gameTab=t.dataset.gameTab;renderWorkspace();return;}
-  if(t.dataset.trainingTab){trainingTab=t.dataset.trainingTab;renderWorkspace();return;}
-  if(t.dataset.context){throwContext=t.dataset.context;document.querySelectorAll('[data-context]').forEach(b=>b.classList.toggle('active',b.dataset.context===throwContext));return;}
-  if(t.dataset.trainingHitType){trainingHitType=t.dataset.trainingHitType;document.querySelectorAll('[data-training-hit-type]').forEach(b=>b.classList.toggle('active',b.dataset.trainingHitType===trainingHitType));return;}
-  if(t.dataset.pitchSelect){selectPitchDraft(t.dataset.pitchSelect);return;}
-  if(t.dataset.pitchTag)return recordPitchTag(t.dataset.pitchTag);
-  if(t.dataset.gameEvent)return recordGameEvent(t.dataset.gameEvent);
-  if(t.dataset.hit)return recordHit(t.dataset.hit);
-  if(t.dataset.defense)return recordDefense(t.dataset.defense);
-  if(t.dataset.base)return recordBase(t.dataset.base);
-  if(t.dataset.throw)return recordTrainingThrow(t.dataset.throw);
-  if(t.dataset.swing)return recordTrainingHit(t.dataset.swing);
-  if(t.dataset.trainingDefense)return recordTrainingDefense(t.dataset.trainingDefense);
-  if(t.dataset.inplay)return setInplay(t.dataset.inplay);
-  if(t.dataset.logFilter){logFilter=t.dataset.logFilter;renderLogs();return;}
-  if(t.dataset.editEvent){
-    const ev=state.events.find(x=>x.id===t.dataset.editEvent&&!x.deletedAt);
-    if(ev && ev.category==='pitch'){ loadPitchDraftFromEvent(ev.id); }
-    else { openEventEdit(t.dataset.editEvent); }
-    return;
-  }
+  if(t.dataset.editEvent)return openEventEdit(t.dataset.editEvent);
   if(t.dataset.deleteEvent)return softDeleteEvent(t.dataset.deleteEvent,true);
 });
 
@@ -541,10 +556,6 @@ document.getElementById('athleteForm').addEventListener('submit',saveAthleteForm
 document.getElementById('deleteAthleteBtn').addEventListener('click',deleteAthlete);
 document.getElementById('gameForm').addEventListener('submit',createGame);
 document.getElementById('trainingForm').addEventListener('submit',createTraining);
-document.getElementById('appearanceForm').addEventListener('submit',startAppearance);
-document.getElementById('endAppearanceBtn').addEventListener('click',endAppearance);
-document.getElementById('pitchDraftSave').addEventListener('click',savePitchDraft);
-document.getElementById('pitchDraftCancel').addEventListener('click',()=>{resetPitchDraft();showToast('현재 타자 상황으로 초기화');});
 document.getElementById('recordSessionPicker').addEventListener('change',e=>{const value=e.target.value;if(!value)return; if(value==='new-game'){openNewGame();return;} if(value==='new-training'){openNewTraining();return;} const [type,id]=value.split(':'); state.activeSession={type,id}; saveState(false); render();});
 document.getElementById('endSessionBtn').addEventListener('click',toggleSessionStatus);
 document.getElementById('workspaceEditBtn').addEventListener('click',openSessionEditor);

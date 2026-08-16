@@ -34,8 +34,220 @@
   </header>
 
   <main class="main">
+  <header class="topbar">
+    <div class="brand-block">
+      <div class="brand-mark" aria-hidden="true">BT</div>
+      <div><div class="eyebrow">BASEBALL TRACKER PRO</div><h1 id="pageTitle">홈</h1></div>
+    </div>
+    <button class="athlete-switcher" id="athleteSwitcher" type="button" aria-label="선수 선택">
+      <span class="athlete-avatar" id="athleteInitial">P</span>
+      <span class="athlete-switch-copy"><small>ATHLETE</small><strong id="activeAthleteName">선수 1</strong></span>
+      <span class="athlete-chevron">⌄</span>
+    </button>
+    <div class="topbar-actions">
+      <button id="cloudPill" class="cloud-pill local" type="button">로컬</button>
+      <button id="installMini" class="install-mini" type="button">앱 설치</button>
+      <div id="todayLabel" class="date-pill"></div>
+    </div>
+  </header>
+
+  <main class="main">
     <!-- HOME -->
     <section class="view active" data-view="home">
+      <div class="page-intro">
+        <div><p class="kicker">TODAY OVERVIEW</p><h2>오늘의 선수 활동</h2></div>
+      </div>
+
+      <section class="hero-card">
+        <div class="hero-head">
+          <div><div class="hero-label">TODAY WORKLOAD</div><p>경기와 훈련 기록을 합산합니다</p></div>
+        </div>
+        <div class="hero-grid four">
+          <div class="hero-metric primary"><div id="homeThrows" class="hero-number">0</div><div class="hero-unit">THROWS</div></div>
+          <div class="hero-metric"><div id="homeTLU" class="hero-number">0</div><div class="hero-unit">TLU</div></div>
+          <div class="hero-metric"><div id="homePA" class="hero-number">0</div><div class="hero-unit">PA</div></div>
+          <div class="hero-metric"><div id="homeSwings" class="hero-number">0</div><div class="hero-unit">SWINGS</div></div>
+        </div>
+      </section>
+
+      <div id="activeSessionBanner" class="active-session-banner" hidden></div>
+
+      <div class="quick-grid two">
+        <button class="quick-card game" data-action="new-game" type="button">
+          <span class="quick-icon">G</span><span><b>경기 기록</b><small>투구 · 타격 · 수비 · 주루</small></span>
+        </button>
+        <button class="quick-card training" data-action="new-training" type="button">
+          <span class="quick-icon">T</span><span><b>훈련 기록</b><small>투구 · 타격 · 수비</small></span>
+        </button>
+      </div>
+
+      <section class="dashboard-panel">
+        <div class="panel-head"><div><p class="section-kicker">RECENT</p><h2>최근 기록</h2></div></div>
+        <div id="homeRecentSessions" class="session-list compact"></div>
+      </section>
+    </section>
+
+    <!-- RECORD -->
+    <section class="view" data-view="record">
+      <div class="page-intro">
+        <div><p class="kicker">RECORD</p><h2>경기와 훈련 기록</h2></div>
+      </div>
+
+      <!-- 날짜 + 경기/훈련 선택 -->
+      <div class="record-selector">
+        <div class="selector-grid">
+          <label>날짜<input id="recordDate" type="date" required /></label>
+          <fieldset class="selector-radio">
+            <legend>종류</legend>
+            <label><input id="sessionTypeGame" type="radio" name="sessionType" value="game" /> 경기</label>
+            <label><input id="sessionTypeTraining" type="radio" name="sessionType" value="training" /> 훈련</label>
+          </fieldset>
+        </div>
+      </div>
+
+      <!-- 세션 콘텐츠 -->
+      <div id="recordContent" hidden>
+        <div class="record-workspace">
+          <div class="workspace-head">
+            <div>
+              <p class="workspace-kicker" id="workspaceKicker">GAME</p>
+              <h2 id="workspaceTitle">경기 정보</h2>
+            </div>
+            <span id="workspaceMeta" class="workspace-meta">—</span>
+          </div>
+
+          <!-- 탭 네비게이션: 투구 / 수비 / 타격 / 주루 -->
+          <div class="tabs-header">
+            <button class="tab-button active" data-tab="pitching" type="button">투구</button>
+            <button class="tab-button" data-tab="defense" type="button">수비</button>
+            <button class="tab-button" data-tab="hitting" type="button">타격</button>
+            <button class="tab-button" data-tab="baserunning" type="button">주루</button>
+          </div>
+
+          <!-- 각 탭의 콘텐츠 영역 -->
+          <div id="tabContent" class="tab-content">
+            <div class="panel-placeholder">
+              <p>준비 중입니다</p>
+              <small>추후 UI 작업이 필요합니다</small>
+            </div>
+          </div>
+
+          <!-- 로그 섹션 (하단) -->
+          <div class="log-section">
+            <div class="log-header">
+              <h3>기록 내용</h3>
+              <span id="recordLogCount" class="log-count">0 events</span>
+            </div>
+            <div id="recordLogList" class="log-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 선택 안 함 상태 -->
+      <div id="recordEmpty" class="empty-state">
+        <div class="empty-content">
+          <p>날짜와 경기/훈련을 선택해주세요</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALYSIS -->
+    <section class="view" data-view="analysis">
+      <div class="page-intro">
+        <div><p class="kicker">ANALYTICS</p><h2>선수 분석</h2></div>
+      </div>
+
+      <div class="analysis-grid top">
+        <article class="analysis-hero"><span>7-DAY TLU</span><strong id="analysis7TLU">0</strong><small>최근 7일</small></article>
+        <article class="analysis-hero"><span>28-DAY TLU</span><strong id="analysis28TLU">0</strong><small>최근 28일</small></article>
+      </div>
+
+      <div class="analysis-grid">
+        <section class="analysis-card"><div class="panel-head"><div><p class="section-kicker">PITCHING</p><h2>투구</h2></div></div><div id="analysisPitching" class="analysis-metrics"></div></section>
+        <section class="analysis-card"><div class="panel-head"><div><p class="section-kicker">HITTING</p><h2>타격</h2></div></div><div id="analysisHitting" class="analysis-metrics"></div></section>
+        <section class="analysis-card"><div class="panel-head"><div><p class="section-kicker">BASERUNNING</p><h2>주루</h2></div></div><div id="analysisBaserunning" class="analysis-metrics"></div></section>
+        <section class="analysis-card"><div class="panel-head"><div><p class="section-kicker">DEFENSE</p><h2>수비</h2></div></div><div id="analysisDefense" class="analysis-metrics"></div></section>
+      </div>
+
+      <section class="analysis-card"><div class="panel-head"><div><p class="section-kicker">WORKLOAD</p><h2>TLU</h2></div></div><div id="tluChart" class="bar-chart"></div></section>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="주요 메뉴">
+    <button class="active" data-nav="home" type="button"><span>⌂</span><b>홈</b></button>
+    <button data-nav="record" type="button"><span>＋</span><b>기록</b></button>
+    <button data-nav="analysis" type="button"><span>▥</span><b>분석</b></button>
+    <button data-nav="settings" type="button"><span>⚙</span><b>설정</b></button>
+  </nav>
+</div>
+
+<!-- Athlete picker -->
+<div id="athletePickerModal" class="modal-backdrop" hidden>
+  <div class="modal-card"><div class="modal-head"><div><p class="section-kicker">ATHLETE</p><h2>선수 선택</h2></div><button id="closeAthletePicker" class="icon-btn" type="button">×</button></div><div id="athletePickerList" class="athlete-list"></div><button id="pickerAddAthlete" class="primary-btn full" type="button">+ 선수 추가</button></div>
+</div>
+
+<!-- Athlete edit -->
+<div id="athleteModal" class="modal-backdrop" hidden>
+  <form id="athleteForm" class="modal-card">
+    <div class="modal-head"><div><p class="section-kicker">ATHLETE</p><h2 id="athleteModalTitle">선수 추가</h2></div><button id="closeAthleteModal" class="icon-btn" type="button">×</button></div>
+    <input id="athleteId" type="hidden" />
+    <div class="form-grid"><label class="span-2">선수 이름<input id="athleteName" required maxlength="40" /></label><label>등번호<input id="athleteNumber" maxlength="8" /></label><label>생년월일<input id="athleteBirthDate" type="date" /></label><label class="span-2">팀<input id="athleteTeam" maxlength="60" /></label><label>포지션<input id="athletePosition" maxlength="30" placeholder="P / SS" /></label><label>투타<div class="dual-select"><select id="athleteThrows"><option value="R">우투</option><option value="L">좌투</option><option value="S">양투</option></select><select id="athleteBats"><option value="R">우타</option><option value="L">좌타</option><option value="S">양타</option></select></div></label></div>
+    <div class="modal-actions"><button id="deleteAthleteBtn" class="danger-ghost" type="button">삭제</button><span></span><button id="cancelAthleteBtn" class="soft-btn" type="button">취소</button><button class="primary-btn" type="submit">저장</button></div>
+  </form>
+</div>
+
+<!-- New game -->
+<div id="gameModal" class="modal-backdrop" hidden>
+  <form id="gameForm" class="modal-card">
+    <div class="modal-head"><div><p class="section-kicker">NEW GAME</p><h2>경기 만들기</h2></div><button class="icon-btn" data-close-modal="gameModal" type="button">×</button></div>
+    <input id="gameEditId" type="hidden" /><div class="form-grid"><label>날짜<input id="gameDate" type="date" required /></label><label>상대팀<input id="gameOpponent" maxlength="60" placeholder="상대팀" /></label><label>장소<input id="gameVenue" maxlength="80" /></label><label>대회<input id="gameCompetition" maxlength="80" /></label><label>우리팀<input id="gameOurScore" type="number" min="0" /></label><label>상대팀<input id="gameOppScore" type="number" min="0" /></label></div>
+    <div class="modal-actions right"><button class="soft-btn" data-close-modal="gameModal" type="button">취소</button><button class="primary-btn" type="submit">시작</button></div>
+  </form>
+</div>
+
+<!-- New training -->
+<div id="trainingModal" class="modal-backdrop" hidden>
+  <form id="trainingForm" class="modal-card">
+    <div class="modal-head"><div><p class="section-kicker">NEW TRAINING</p><h2>훈련 시작</h2></div><button class="icon-btn" data-close-modal="trainingModal" type="button">×</button></div>
+    <input id="trainingEditId" type="hidden" /><div class="form-grid"><label>날짜<input id="trainingDate" type="date" required /></label><label>제목<input id="trainingTitle" maxlength="80" placeholder="훈련" /></label></div>
+    <div class="modal-actions right"><button class="soft-btn" data-close-modal="trainingModal" type="button">취소</button><button class="primary-btn" type="submit">시작</button></div>
+  </form>
+</div>
+
+<!-- Settings -->
+<div id="settingsModal" class="modal-backdrop" hidden>
+  <div class="modal-card"><div class="modal-head"><div><p class="section-kicker">SETTINGS</p><h2>설정</h2></div><button class="icon-btn" data-close-modal="settingsModal" type="button">×</button></div>
+  <div class="settings-content">
+    <section>
+      <div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h3>선수 관리</h3></div></div>
+      <div id="athleteList" class="athlete-list"></div>
+      <button class="primary-btn full" id="addAthleteBtn" type="button">+ 선수 추가</button>
+    </section>
+    <section>
+      <div class="panel-head"><div><p class="section-kicker">CLOUD</p><h3>계정 및 동기화</h3></div></div>
+      <p id="cloudStatusText">로컬 저장 중</p>
+      <div id="cloudNotConfigured" hidden><p>Supabase 설정 필요</p></div>
+      <div id="cloudLoggedOut" hidden>
+        <label>이메일<input id="authEmail" type="email" /></label>
+        <label>비밀번호<input id="authPassword" type="password" /></label>
+        <button id="signInBtn" class="soft-btn" type="button">로그인</button>
+        <button id="signUpBtn" class="soft-btn" type="button">가입</button>
+      </div>
+      <div id="cloudLoggedIn" hidden>
+        <p id="cloudUserEmail">로그인됨</p>
+        <button id="syncNowBtn" class="soft-btn" type="button">동기화</button>
+        <button id="signOutBtn" class="soft-btn" type="button">로그아웃</button>
+      </div>
+    </section>
+  </div></div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="supabase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
       <div class="page-intro">
         <div><p class="kicker">TODAY OVERVIEW</p><h2>오늘의 선수 활동</h2></div>
         <span class="status-note">이벤트 기반 자동 집계</span>
