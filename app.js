@@ -285,13 +285,79 @@ function renderRecord(){
     document.getElementById('workspaceMeta').textContent=fmtLongDate(recordDate);
   }
 
-  // 탭 업데이트
+  // 탭 업데이트 및 메트릭 표시
   document.querySelectorAll('.tab-button').forEach(btn=>{
     btn.classList.toggle('active', btn.dataset.tab===currentTab);
   });
 
+  // 탭 콘텐츠 업데이트
+  document.querySelectorAll('.tab-pane').forEach(pane=>pane.classList.remove('active'));
+  const activePaneId={
+    'pitching':'pitchingTab',
+    'defense':'defenseTab',
+    'hitting':'hittingTab',
+    'baserunning':'baserunningTab'
+  }[currentTab];
+  const activePane=document.getElementById(activePaneId);
+  if(activePane) activePane.classList.add('active');
+
+  // 세션이 없으면 메트릭을 0으로 표시
+  if(!session){
+    renderTabMetrics(null, sessionType, currentTab);
+    renderRecordLog(null);
+    return;
+  }
+
+  // 메트릭 렌더링
+  const events=athleteEvents().filter(e=>
+    sessionType==='game' ? e.gameId===session.id : e.trainingSessionId===session.id
+  );
+  renderTabMetrics(events, sessionType, currentTab);
+
   // 로그 렌더링
   renderRecordLog(session);
+}
+
+function renderTabMetrics(events, sessionType, tab){
+  if(!events){
+    document.getElementById('pitchCount').textContent='0';
+    document.getElementById('strikeRate').textContent='0%';
+    document.getElementById('pitchTLU').textContent='0';
+    document.getElementById('hittingPA').textContent='0';
+    document.getElementById('hittingAVG').textContent='.000';
+    document.getElementById('hittingOBP').textContent='.000';
+    document.getElementById('defenseInn').textContent='0';
+    document.getElementById('defensePos').textContent='—';
+    document.getElementById('baseSB').textContent='0';
+    document.getElementById('baseCS').textContent='0';
+    return;
+  }
+
+  // 투구 메트릭
+  const pitch=derivePitchingAggregate(events);
+  document.getElementById('pitchCount').textContent=pitch.total;
+  document.getElementById('strikeRate').textContent=`${pct(pitch.strikePct)}`;
+  document.getElementById('pitchTLU').textContent=one(pitch.tlu);
+
+  // 타격 메트릭
+  const hit=calcHitting(events);
+  document.getElementById('hittingPA').textContent=hit.PA;
+  document.getElementById('hittingAVG').textContent=decimal(hit.avg);
+  document.getElementById('hittingOBP').textContent=decimal(hit.obp);
+
+  // 수비 메트릭
+  document.getElementById('defenseInn').textContent=countDefenseInnings(events);
+  document.getElementById('defensePos').textContent='—';
+
+  // 주루 메트릭
+  const base=calcBase(events);
+  document.getElementById('baseSB').textContent=base.sb;
+  document.getElementById('baseCS').textContent=base.cs;
+}
+
+function countDefenseInnings(events){
+  const defenseEvents=events.filter(e=>e.category==='defense'||e.eventType?.includes('defense'));
+  return defenseEvents.length>0 ? Math.min(defenseEvents.length, 9) : 0;
 }
 
 function renderRecordLog(session){

@@ -126,9 +126,68 @@
 
           <!-- 각 탭의 콘텐츠 영역 -->
           <div id="tabContent" class="tab-content">
-            <div class="panel-placeholder">
-              <p>준비 중입니다</p>
-              <small>추후 UI 작업이 필요합니다</small>
+            <!-- 투구 탭 -->
+            <div id="pitchingTab" class="tab-pane active">
+              <div class="metric-cards">
+                <div class="metric-card primary">
+                  <div class="metric-value" id="pitchCount">0</div>
+                  <div class="metric-label">PITCHES</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value" id="strikeRate">0%</div>
+                  <div class="metric-label">STRIKES</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value" id="pitchTLU">0</div>
+                  <div class="metric-label">TLU</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 타격 탭 -->
+            <div id="hittingTab" class="tab-pane" style="display:none;">
+              <div class="metric-cards">
+                <div class="metric-card primary">
+                  <div class="metric-value" id="hittingPA">0</div>
+                  <div class="metric-label">PA</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value" id="hittingAVG">.000</div>
+                  <div class="metric-label">AVG</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value" id="hittingOBP">.000</div>
+                  <div class="metric-label">OBP</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 수비 탭 -->
+            <div id="defenseTab" class="tab-pane" style="display:none;">
+              <div class="metric-cards">
+                <div class="metric-card primary">
+                  <div class="metric-value" id="defenseInn">0</div>
+                  <div class="metric-label">INNINGS</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value" id="defensePos">—</div>
+                  <div class="metric-label">POSITION</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 주루 탭 -->
+            <div id="baserunningTab" class="tab-pane" style="display:none;">
+              <div class="metric-cards">
+                <div class="metric-card primary">
+                  <div class="metric-value" id="baseSB">0</div>
+                  <div class="metric-label">SB</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value" id="baseCS">0</div>
+                  <div class="metric-label">CS</div>
+                </div>
+              </div>
             </div>
           </div>
 
