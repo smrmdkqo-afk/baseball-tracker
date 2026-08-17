@@ -1,25 +1,32 @@
-Baseball Tracker Pro V6.2.1 - Startup Reliability Checks
-=======================================================
+Baseball Tracker Pro V6.2.2 - Test Report
+========================================
 
-PASS  JavaScript syntax: js/app.js
-PASS  JavaScript syntax: js/analytics.js
-PASS  JavaScript syntax: js/storage.js
-PASS  app.js imports are version-busted (?v=6.2.1)
-PASS  index.html app.js/styles/config URLs are version-busted
-PASS  Service Worker cache namespace is v6.2.1
-PASS  Old Baseball Tracker service-worker cache namespaces are removed on activation
-PASS  [hidden] CSS rule remains enforced
-PASS  Static navigation is bound before IndexedDB migration/load begins
-PASS  IndexedDB startup steps have bounded timeout/error reporting
-PASS  Startup failure no longer replaces the entire page; recovery UI remains clickable
-PASS  Recovery action unregisters service workers and clears PWA Cache Storage only
-PASS  Recovery does NOT clear IndexedDB athlete/game/training records
-PASS  No Supabase schema migration required from V6.2
+Root cause fixed
+----------------
+V6.2.1 contained an invalid JavaScript object literal in js/app.js:
+  const labels={1B:'1루',2B:'2루',3B:'3루',...}
+Because identifiers cannot start with digits, the ES module failed to parse before init() ran.
+Result: static Home HTML appeared, but navigation/event binding/cloud initialization never started.
 
-Notes
------
-The reported 'static home screen / every click dead / no sync' condition is consistent
-with the application module not reaching initialization. V6.2 used stable asset URLs,
-which allowed a stale controlling service worker/browser cache to potentially mix
-release assets during deployment. V6.2.1 prevents that class of update failure and
-adds visible recovery if initialization is delayed or fails.
+Fix
+---
+Quoted the base keys:
+  const labels={'1B':'1루','2B':'2루','3B':'3루',...}
+Version/cache bumped to 6.2.2.
+
+Validation
+----------
+1. js/storage.js + js/analytics.js import: PASS
+2. js/app.js ES-module parse: PASS (Node reaches runtime environment access rather than SyntaxError)
+3. Browser UI harness with in-memory storage:
+   - application initialization: PASS (__BT_APP_READY__ === true)
+   - Home render: PASS
+   - bottom nav -> Input: PASS
+   - bottom nav -> Analysis: PASS
+   - Analysis empty-state chart render: PASS
+4. Static selector/HTML review: PASS for startup-required elements
+5. Service worker cache version: baseball-tracker-pro-v6.2.2
+
+Database
+--------
+No Supabase schema change from V6.2/V6.2.1. Do NOT rerun migration_v6.sql solely for this patch.

@@ -118,10 +118,13 @@ GitHub → Settings → Pages:
 
 V6/V6.1에서 이미 `migration_v6.sql`을 실행했다면 **V6.2용 추가 SQL은 없습니다.**
 
-## V6.2.1 startup/cache reliability fix
+## V6.2.2 startup/cache reliability fix
 
-V6.2.1 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
+V6.2.2 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
 
 Startup now binds the static navigation before IndexedDB loading, applies timeouts to local database initialization, and shows a non-blocking recovery banner if app initialization does not finish. The recovery button unregisters Baseball Tracker service workers, removes only Baseball Tracker PWA caches, and reloads the page. It does not delete IndexedDB baseball records.
 
-No Supabase schema change is required from V6.2 to V6.2.1.
+No Supabase schema change is required from V6.2 to V6.2.2.
+
+## V6.2.2 startup hotfix
+V6.2.1의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 작성되어 ES module 전체가 파싱되지 않는 문제가 있었습니다. V6.2.2에서 수정했고, 실제 브라우저 테스트 하네스에서 앱 초기화와 하단 메뉴 전환까지 검증했습니다. DB 스키마 변경은 없습니다.
