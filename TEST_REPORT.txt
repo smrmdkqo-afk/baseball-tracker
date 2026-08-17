@@ -1,25 +1,47 @@
-Baseball Tracker Pro V5.1 Quick - validation report
+Baseball Tracker Pro V5.2 Test Report
 
-PASS - app.js JavaScript syntax
-PASS - sw.js JavaScript syntax
-PASS - manifest JSON parse
-PASS - HTML id <-> JavaScript getElementById reference check
-PASS - detailed appearance UI removed (inning / outs / inherited runners)
-PASS - game throw buttons present: pickoff_normal / pickoff_error / game_warmup
-PASS - IN PLAY required results present: OUT / 1B / 2B / 3B / HR / ROE / SH / SF
-PASS - workload logic test using the exact app calculation functions:
-       4 official pitches + normal pickoff + error pickoff + warm-up
-       => Official Pitches 4, Game TLU 6.7
-PASS - total workload logic test:
-       above + training 0.75 + 0.85 + 1.00
-       => Total Throws 10, Total TLU 9.3
-PASS - batter-flow logic test:
-       K + BB + HBP + IN PLAY(SF) => Batters Faced 4
-PASS - IN PLAY counted as Strike for Strike%
-PASS - IN PLAY optional batted-ball type / direction retained in calculations
-PASS - game_throw events do not increase Official Pitch Count
-PASS - core static assets served with HTTP 200 on a local web server
+1. JavaScript syntax
+- node --check app.js: PASS
 
-Not executed here:
-- Live Supabase round-trip / RLS test (Project URL not included)
-- Live GitHub Pages deployment and real phone/tablet PWA install
+2. HTML / JavaScript element linkage
+- getElementById references: 116
+- missing HTML ids: 0
+- PASS
+
+3. Runtime smoke test (mock browser DOM)
+- app.js initialization: PASS
+- Home render: PASS
+- Input date initialized: PASS
+
+4. Past-date behavior test
+Scenario:
+- Current device date: 2026-08-16 (test container local date)
+- Input activity date changed to: 2026-08-15
+- One GAME BALL pitch entered
+
+Observed:
+- event.metadata.activityDate = 2026-08-15: PASS
+- event.occurredAt recorded on actual input date 2026-08-16: PASS
+- Home TOTAL THROWS remained 0 for 2026-08-16: PASS
+- 30-day analysis TLU became 1.0: PASS
+- History date selector contains 2026-08-15: PASS
+
+5. Data/schema compatibility
+- No new Supabase column required
+- activityDate stored in events.metadata JSON
+- Existing V5 schema remains compatible
+
+6. PWA
+- Service worker cache bumped to 5.2.0
+
+7. Training past-date behavior
+- Past-date moderate training throw stored as training_throw/moderate: PASS
+- activityDate stayed on selected past date: PASS
+- Home TLU for actual today remained 0: PASS
+- 30-day analysis TLU increased by 0.85: PASS
+
+8. Game load separation
+Scenario: 1 official pitch + 1 normal pickoff + 1 warm-up throw
+- Official Pitches = 1: PASS
+- Game TLU = 2.85 (1.00 + 0.85 + 1.00): PASS
+- Total Throws = 3: PASS

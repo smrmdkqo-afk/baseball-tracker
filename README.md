@@ -1,89 +1,53 @@
-# Baseball Tracker Pro V5.1 Quick
+# Baseball Tracker Pro V5.2 — Date First
 
-모바일·태블릿·PC에서 사용하는 선수 중심 야구 기록 PWA입니다. V5.1은 상세 경기 스코어링을 제거하고 **빠른 투구 기록 + TLU + 타격/훈련 기록**에 집중합니다.
+V5.2는 UI와 날짜 처리 방식을 정리한 버전입니다. DB 스키마는 V5와 동일합니다.
 
-## 이번 버전의 핵심 변경
+## 핵심 변경
 
-- 이닝 / 아웃 / 주자 / 승계주자 / 점수 입력 UI 제거
-- 상세 경기 모드 없음
-- 경기 투구는 타자에게 던진 공만 Official Pitch로 집계
-- Official Pitch 1구 = 1.00 TLU
-- 견제 정상 = 0 Official Pitch / 0.85 TLU
-- 견제 악송구 = 0 Official Pitch / 0.85 TLU
-- 경기 중 연습투구 = 0 Official Pitch / 1.00 TLU
-- Total Throws에는 Official Pitch + 견제 + 연습투구 + 훈련투구를 모두 포함
-- IN PLAY는 결과 선택 후에만 투구로 확정 저장
-- IN PLAY 결과: OUT / 1B / 2B / 3B / HR / ROE / SH / SF
-- 타구 형태 GB / LD / FB 및 방향 좌 / 중 / 우는 선택 입력
-- Strike%에는 루킹 / 헛스윙 / 파울 / IN PLAY를 Strike로 포함
-- K / BB / HBP / Batters Faced / Pitches per Batter / First Pitch Strike% 자동 계산
-- 상세 이벤트 로그에서 수정 / 삭제 / 5초 Undo 지원
+- 하단 메뉴: **홈 / 입력 / 기록 / 분석 / 설정**
+- 사용자에게 보이는 세션 이름과 세션 생성 UI 제거
+- 입력 화면: **날짜 → 경기/훈련 → 투구/타격/주루/수비** 순서
+- 경기 선택 시: 투구 / 타격 / 주루 / 수비
+- 훈련 선택 시: 투구 / 타격 / 수비
+- 홈은 실제 오늘 날짜의 활동만 표시
+- 분석은 7일 / 30일 / 시즌 / 전체 기간 통계와 TLU 추세 표시
+- 기록은 activityDate 기준으로 날짜별 상세 로그 제공
+- 이벤트 수정 시 활동 날짜 자체를 이동 가능
 
-## TLU 정의
+## 날짜 처리
+
+각 이벤트는 두 시간 개념을 분리합니다.
+
+- `metadata.activityDate`: 실제 경기/훈련 날짜. **홈, 기록, 분석의 집계 기준**
+- `occurredAt` / `metadata.recordedAt`: 앱에 실제 입력한 시각. 감사/로그용
+
+예: 8/17에 8/15 경기 영상을 보며 입력하면 기록은 8/15에 추가되고 8/17 홈 수치는 변하지 않습니다. 8/15가 포함되는 분석 기간에는 소급 반영됩니다.
+
+## TLU 규칙
 
 ### 경기
-
-| 이벤트 | Official Pitch | TLU |
-|---|---:|---:|
-| 타자에게 던진 공 | +1 | +1.00 |
-| 견제 정상 | +0 | +0.85 |
-| 견제 악송구 | +0 | +0.85 |
-| 연습투구 | +0 | +1.00 |
+- Official Pitch: +1 official pitch / +1.00 TLU
+- 견제 정상: +0 official pitch / +0.85 TLU
+- 견제 악송구: +0 official pitch / +0.85 TLU
+- 연습투구: +0 official pitch / +1.00 TLU
 
 ### 훈련
+- 가벼운: 0.75 TLU
+- 적정(약 80%): 0.85 TLU
+- 전력: 1.00 TLU
 
-| 강도 | TLU |
-|---|---:|
-| 가벼운 <70% | 0.75 |
-| 적정 약 80% | 0.85 |
-| 전력 | 1.00 |
+## Supabase
 
-## Supabase DB
+V5에서 이미 `migration_v5.sql`을 실행했다면 **V5.2용 새 SQL은 필요 없습니다.** `activityDate`는 기존 `events.metadata` JSON에 저장되므로 DB 컬럼 추가가 없습니다.
 
-**V5를 이미 사용 중이면 V5.1에서 추가 SQL 변경은 필요 없습니다.** `events` 테이블의 기존 `category` / `event_type` 필드에 새 이벤트를 저장합니다.
-
-- 새 이벤트 category: `game_throw`
-- event_type: `pickoff_normal`, `pickoff_error`, `game_warmup`
-
-기존 V5 데이터와 `appearances` 테이블은 호환성을 위해 그대로 둘 수 있습니다. V5.1 UI에서는 등판 상황을 사용하지 않습니다.
-
-V4에서 처음 업데이트하는 경우에만 `migration_v5.sql`을 Supabase SQL Editor에서 실행하세요. 기존 `athlete_days`, `tracker_days`는 삭제하지 마세요.
-
-## Supabase 설정
-
-`supabase-config.js`에서 Project URL만 확인하세요.
-
-```js
-window.BASEBALL_SUPABASE_CONFIG = {
-  url: 'https://YOUR-PROJECT-REF.supabase.co',
-  publishableKey: 'sb_publishable_...'
-};
-```
-
-브라우저에는 Publishable key만 사용합니다. `service_role` 또는 `sb_secret_...` 키는 넣지 마세요.
+V4에서 바로 올리는 경우에는 먼저 `migration_v5.sql`을 실행하세요. 기존 V4 테이블은 삭제하지 않습니다.
 
 ## GitHub Pages 업데이트
 
-1. 현재 앱에서 JSON 백업을 하나 내려받습니다.
-2. ZIP을 풉니다.
-3. GitHub repository의 기존 V5 파일을 V5.1 파일로 교체합니다.
-4. `index.html`, `app.js`, `styles.css`, `sw.js` 등이 repository root에 있어야 합니다.
-5. Commit changes 합니다.
-6. GitHub Pages 주소를 열고 새로고침합니다.
-7. PWA가 이전 파일을 캐시하고 있으면 앱을 완전히 종료 후 다시 열거나 브라우저에서 새로고침합니다. V5.1은 service-worker cache 이름이 변경되어 새 파일로 갱신됩니다.
+1. 이 폴더의 파일을 기존 repository 최상위에 업로드/교체
+2. `supabase-config.js`의 Project URL 확인
+3. Commit
+4. GitHub Pages가 새 버전을 배포한 뒤 브라우저를 새로고침
+5. 설치형 PWA에서 이전 화면이 보이면 앱을 완전히 종료 후 다시 실행
 
-## 권장 테스트
-
-1. 새 경기 시작
-2. BALL / 루킹 / 헛스윙 / 파울 기록
-3. IN PLAY → 1B 등 결과 선택
-4. 필요하면 GB/LD/FB 및 좌/중/우 선택
-5. 견제 정상 1회, 견제 악송구 1회, 연습투구 1회 기록
-6. Official Pitch Count가 견제/연습 때문에 증가하지 않는지 확인
-7. Game TLU에는 0.85 / 0.85 / 1.00이 반영되는지 확인
-8. 로그에서 각각 수정/삭제 후 TLU와 통계 재계산 확인
-9. 같은 계정으로 휴대폰/태블릿에서 동기화 확인
-
-## 오프라인 / 동기화
-
-입력은 먼저 기기에 저장하고, 온라인이면 Supabase로 동기화합니다. 자동 동기화 성공 때 완료 팝업을 반복 표시하지 않고 상단 상태만 갱신합니다.
+서비스워커 캐시 버전은 `5.2.0`으로 갱신되어 있습니다.

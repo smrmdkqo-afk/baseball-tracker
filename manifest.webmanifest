@@ -1,7 +1,7 @@
 {
   "name": "Baseball Tracker Pro",
   "short_name": "Baseball Tracker",
-  "description": "빠른 경기 투구 기록, TLU, 타격·훈련 기록을 위한 선수 중심 야구 트래커",
+  "description": "날짜 중심 빠른 입력, TLU, 경기·훈련 기록과 분석을 위한 선수 중심 야구 트래커",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
