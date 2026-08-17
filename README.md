@@ -1,4 +1,4 @@
-# Baseball Tracker Pro V6.3.0
+# Baseball Tracker Pro V6.4.0
 
 V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성한 버전입니다.
 
@@ -118,19 +118,19 @@ GitHub → Settings → Pages:
 
 V6/V6.1에서 이미 `migration_v6.sql`을 실행했다면 **V6.2용 추가 SQL은 없습니다.**
 
-## V6.3.0 startup/cache reliability fix
+## V6.4.0 startup/cache reliability fix
 
-V6.3.0 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
+V6.4.0 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
 
 Startup now binds the static navigation before IndexedDB loading, applies timeouts to local database initialization, and shows a non-blocking recovery banner if app initialization does not finish. The recovery button unregisters Baseball Tracker service workers, removes only Baseball Tracker PWA caches, and reloads the page. It does not delete IndexedDB baseball records.
 
-No Supabase schema change is required from V6.2 to V6.3.0.
+No Supabase schema change is required from V6.2 to V6.4.0.
 
-## V6.3.0 startup hotfix
-V6.3.0의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 작성되어 ES module 전체가 파싱되지 않는 문제가 있었습니다. V6.3.0에서 수정했고, 실제 브라우저 테스트 하네스에서 앱 초기화와 하단 메뉴 전환까지 검증했습니다. DB 스키마 변경은 없습니다.
+## V6.4.0 startup hotfix
+V6.4.0의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 작성되어 ES module 전체가 파싱되지 않는 문제가 있었습니다. V6.4.0에서 수정했고, 실제 브라우저 테스트 하네스에서 앱 초기화와 하단 메뉴 전환까지 검증했습니다. DB 스키마 변경은 없습니다.
 
 
-## V6.3.0 — BF/PA card editing UX
+## V6.4.0 — BF/PA card editing UX
 - 경기 투구/타격 B/S 카운트 색상 분리: Ball=Green, Strike=Amber.
 - BALL/Strike/IN PLAY/HBP 버튼을 의미별 색상과 고정 위치로 통일.
 - 타자(BF)/타석(PA)을 카드 단위로 묶고 번호 accent를 순환 표시.
@@ -139,3 +139,29 @@ V6.3.0의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 �
 - 카드 안 각 투구를 눌러 공 종류, IN PLAY 결과, 타구형태/방향, 구종/구속/위치/메모를 한 화면에서 수정.
 - 수정/삭제 후 BF/PA 결과와 B/S 및 분석값은 원본 pitch event에서 재계산.
 - 기록 탭도 동일 BF/PA 카드 컴포넌트를 재사용.
+
+
+## V6.4.0 — BF/PA 결과 미상 · 부모 기록 보존
+
+이번 버전의 핵심은 `완료 / 결과 미상 / 미완료 / 삭제`를 명확히 분리하는 것입니다.
+
+- `? 결과 미상으로 다음 타자/타석`
+  - 현재까지 입력한 pitch는 그대로 보존합니다.
+  - 부모 BF/PA는 `result = "UNKNOWN"`, `completed = false`로 유지합니다.
+  - 다음 BF/PA는 미리 만들지 않고, 다음 첫 pitch를 입력하는 순간 생성합니다.
+- `최종 결과만 입력` 기능은 추가하지 않았습니다.
+- 결과 미상 BF/PA는 자동으로 현재 입력 대상으로 다시 잡히지 않습니다.
+- 결과 미상 카드의 `계속 입력`을 누르면 UNKNOWN 상태를 해제하고 같은 BF/PA에 pitch를 이어서 입력합니다.
+- 개별 pitch를 삭제해도 부모 BF/PA는 자동 삭제하지 않습니다.
+  - 완료 조건이 깨지면 `미완료 기록`으로 다시 계산됩니다.
+  - 모든 pitch를 삭제해도 부모 카드와 좌/우 Context는 남습니다.
+- 부모 카드에서 `타자 기록 삭제 / 타석 기록 삭제`를 명시적으로 눌렀을 때만 부모와 하위 pitch를 함께 soft-delete합니다.
+- 부모 전체 삭제도 5초 Undo가 가능합니다.
+- 삭제된 BF/PA 번호는 재사용하지 않습니다. sequence 번호는 soft-delete 행까지 포함해 계속 증가합니다.
+- 입력 화면의 BF/PA 최근 5개 제한과 일반 입력 8개 제한을 제거했습니다. 선택 날짜의 기록을 모두 표시합니다.
+- 분석에 `완료 / 결과 미상 / 미완료` 상태 수를 추가했습니다.
+- 결과 미상/미완료의 pitch 자체는 투구수, TLU, Strike%, Swing/Whiff/Contact 같은 pitch-level 분석에 남습니다.
+- BF/PA 결과가 필요한 K/BB/AVG/OBP/SLG/OPS에는 완료 부모만 사용합니다.
+- P/BF는 완료 BF에 속한 pitch만 분자로 사용하도록 수정했습니다.
+
+`UNKNOWN`은 기존 `result text` 컬럼을 사용하는 상태값이므로 **Supabase 스키마 추가 변경은 필요하지 않습니다.**

@@ -1,18 +1,16 @@
-Baseball Tracker Pro V6.3.0 - GitHub Pages 업데이트
+Baseball Tracker Pro V6.4.0 - GitHub Pages 업데이트
 
-[ ] 1. Supabase SQL Editor에서 migration_v6.sql 실행
-[ ] 2. V5 기존 테이블은 삭제하지 않기
-[ ] 3. supabase-config.js의 Project URL 확인
-[ ] 4. ZIP 압축 해제
-[ ] 5. ZIP 자체가 아니라 내부 파일 전체를 GitHub root에 업로드
-[ ] 6. index.html / styles.css / js 폴더 / sw.js가 root에 있는지 확인
-[ ] 7. Commit changes
-[ ] 8. Settings > Pages > main / (root) 확인
-[ ] 9. 기존 V5 기록이 있는 기기에서 V6.3.0 페이지를 먼저 열기
-[ ] 10. 로그인 후 '지금 동기화' 1회 실행
-[ ] 11. 경기 > 투구에서 K 완료 Toast 확인
-[ ] 12. 경기 > 타격에서 PA 완료 Toast 확인
-[ ] 13. 과거 날짜 입력 후 홈의 오늘 수치가 안 바뀌는지 확인
-[ ] 14. 휴대폰/태블릿에서 설치 후 오프라인 입력 확인
+[ ] 1. 이 폴더의 파일 전체를 GitHub Pages 루트에 업로드/덮어쓰기
+[ ] 2. VERSION이 6.4.0인지 확인
+[ ] 3. index.html / styles.css / js/app.js / js/analytics.js / js/storage.js / sw.js가 모두 같이 교체됐는지 확인
+[ ] 4. 기존 V6 migration이 이미 적용되어 있으면 SQL 재실행하지 않기
+[ ] 5. GitHub Pages 배포 완료 후 앱을 완전히 닫았다가 다시 열기
+[ ] 6. 투구에서 1~2구 입력 후 '? 결과 미상으로 다음 타자' 동작 확인
+[ ] 7. 타격에서도 '? 결과 미상으로 다음 타석' 동작 확인
+[ ] 8. 결과 미상 카드를 펼쳐 '계속 입력' 가능한지 확인
+[ ] 9. 개별 pitch를 모두 삭제해도 부모 BF/PA 카드가 '미완료 기록'으로 남는지 확인
+[ ] 10. 부모 카드의 '타자/타석 기록 삭제'가 하위 pitch까지 숨기고, 5초 Undo로 복원되는지 확인
+[ ] 11. 입력 화면에 선택 날짜의 BF/PA가 5개를 넘어도 모두 보이는지 확인
+[ ] 12. 분석 > 경기 > 투구/타격에서 완료/결과 미상/미완료 상태 수 확인
 
-V6.2.2 -> V6.3.0 업데이트: 추가 SQL 없음. 파일 전체 교체 후 서비스워커 캐시가 v6.3.0으로 갱신되는지 확인.
+V6.3.0 -> V6.4.0: 추가 Supabase SQL 없음.

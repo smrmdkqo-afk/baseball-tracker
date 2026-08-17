@@ -44,17 +44,22 @@ export function gamePitchingSummary(data,{athleteId,date=null,from=null,to=null,
   const gameTLU=events.reduce((sum,e)=>sum+(GAME_TLU[e.eventType]||Number(e.metadata?.tlu)||0),0);
   const bfList=active(data.batterFaced).filter(b=>b.athleteId===athleteId&&(date?b.activityDate===date:inDateRange(b.activityDate,from,to))&&(!pitcherSide||b.pitcherSide===pitcherSide)&&(!batterSide||b.batterSide===batterSide));
   const completed=bfList.filter(b=>b.completed);
+  const unknown=bfList.filter(b=>!b.completed&&b.result==='UNKNOWN');
+  const incomplete=bfList.filter(b=>!b.completed&&b.result!=='UNKNOWN');
   const k=completed.filter(b=>b.result==='K').length,bb=completed.filter(b=>b.result==='BB').length,bfHbp=completed.filter(b=>b.result==='HBP').length;
   const firstPitch=[];
   for(const bf of bfList){const ps=pitches.filter(e=>e.parentId===bf.id).sort((a,b)=>new Date(a.recordedAt)-new Date(b.recordedAt));if(ps[0])firstPitch.push(STRIKE_PITCH_TYPES.has(ps[0].eventType)?1:0);}
   const battedResults={OUT:0,'1B':0,'2B':0,'3B':0,HR:0,ROE:0,SH:0,SF:0},battedTypes={GB:0,LD:0,FB:0},directions={L:0,C:0,R:0};
   for(const e of inplay){const r=e.metadata?.result;if(r&&r in battedResults)battedResults[r]++;const bt=e.metadata?.battedBall;if(bt&&bt in battedTypes)battedTypes[bt]++;const dr=e.metadata?.direction;if(dr&&dr in directions)directions[dr]++;}
-  return {officialPitches:pitches.length,totalGameThrows:pitches.length+pickoffs.length+pickoffErrors.length+warmups.length,gameTLU:round2(gameTLU),strikes:strikes.length,balls:balls.length,hbp:hbp.length,called:called.length,swinging:swinging.length,foul:foul.length,inplay:inplay.length,strikePct:pct(strikes.length,pitches.length),firstPitchStrikePct:firstPitch.length?avg(firstPitch):null,bf:completed.length,k,bb,bfHbp,pitchesPerBatter:pct(pitches.length,completed.length),pickoffs:pickoffs.length,pickoffErrors:pickoffErrors.length,warmups:warmups.length,battedResults,battedTypes,directions,events,pitches};
+  const completedIds=new Set(completed.map(b=>b.id)),completedPitchCount=pitches.filter(e=>completedIds.has(e.parentId)).length;
+  return {officialPitches:pitches.length,totalGameThrows:pitches.length+pickoffs.length+pickoffErrors.length+warmups.length,gameTLU:round2(gameTLU),strikes:strikes.length,balls:balls.length,hbp:hbp.length,called:called.length,swinging:swinging.length,foul:foul.length,inplay:inplay.length,strikePct:pct(strikes.length,pitches.length),firstPitchStrikePct:firstPitch.length?avg(firstPitch):null,bf:completed.length,unknownBF:unknown.length,incompleteBF:incomplete.length,k,bb,bfHbp,pitchesPerBatter:pct(completedPitchCount,completed.length),pickoffs:pickoffs.length,pickoffErrors:pickoffErrors.length,warmups:warmups.length,battedResults,battedTypes,directions,events,pitches};
 }
 
 export function battingSummary(data,{athleteId,date=null,from=null,to=null,batterSide=null,pitcherSide=null}={}){
   const pas=active(data.plateAppearances).filter(p=>p.athleteId===athleteId&&(date?p.activityDate===date:inDateRange(p.activityDate,from,to))&&(!batterSide||p.batterSide===batterSide)&&(!pitcherSide||p.pitcherSide===pitcherSide));
   const completed=pas.filter(p=>p.completed&&p.result);
+  const unknown=pas.filter(p=>!p.completed&&p.result==='UNKNOWN');
+  const incomplete=pas.filter(p=>!p.completed&&p.result!=='UNKNOWN');
   // V6 canonical domain is "hitting". Legacy "batting" is also accepted for backward compatibility.
   const events=active(data.gameEvents).filter(e=>e.athleteId===athleteId&&['hitting','batting'].includes(e.domain)&&e.parentType==='plate_appearance'&&pas.some(p=>p.id===e.parentId));
   const counts={};for(const p of completed)counts[p.result]=(counts[p.result]||0)+1;
@@ -63,7 +68,7 @@ export function battingSummary(data,{athleteId,date=null,from=null,to=null,batte
   const swingTypes=new Set(['swinging_strike','foul','in_play']),swings=events.filter(e=>swingTypes.has(e.eventType)),whiffs=events.filter(e=>e.eventType==='swinging_strike'),contacts=events.filter(e=>['foul','in_play'].includes(e.eventType));
   const takenBalls=events.filter(e=>e.eventType==='taken_ball').length,takenStrikes=events.filter(e=>e.eventType==='taken_strike').length;
   const battedTypes={GB:0,LD:0,FB:0},directions={L:0,C:0,R:0};for(const e of events.filter(e=>e.eventType==='in_play')){const bt=e.metadata?.battedBall;if(bt&&bt in battedTypes)battedTypes[bt]++;const dr=e.metadata?.direction;if(dr&&dr in directions)directions[dr]++;}
-  return {PA:completed.length,AB,H,BB,HBP,SF,SH,SO,ROE,AVG,OBP,SLG,OPS,TB,counts,swings:swings.length,whiffs:whiffs.length,contacts:contacts.length,whiffPct:pct(whiffs.length,swings.length),contactPct:pct(contacts.length,swings.length),takenBalls,takenStrikes,events,pas,battedTypes,directions};
+  return {PA:completed.length,unknownPA:unknown.length,incompletePA:incomplete.length,AB,H,BB,HBP,SF,SH,SO,ROE,AVG,OBP,SLG,OPS,TB,counts,swings:swings.length,whiffs:whiffs.length,contacts:contacts.length,whiffPct:pct(whiffs.length,swings.length),contactPct:pct(contacts.length,swings.length),takenBalls,takenStrikes,events,pas,battedTypes,directions};
 }
 
 function isOutfieldPosition(p){return ['LF','CF','RF'].includes(String(p||'').toUpperCase());}
@@ -111,7 +116,7 @@ export function seriesByDate(data,{athleteId,from,to,metric,source='training',do
     } else if(source==='pitching'){
       const p=gamePitchingSummary(data,{athleteId,date:cur,pitcherSide,batterSide});hasData=p.events.length>0||p.bf>0;value=metric==='strikePct'?(p.strikePct==null?null:p.strikePct*100):metric==='firstPitchStrikePct'?(p.firstPitchStrikePct==null?null:p.firstPitchStrikePct*100):metric==='gameTLU'?p.gameTLU:metric==='officialPitches'?p.officialPitches:metric==='k'?p.k:metric==='bb'?p.bb:null;
     } else if(['hitting','batting'].includes(source)){
-      const h=battingSummary(data,{athleteId,date:cur,batterSide,pitcherSide});hasData=h.PA>0;value=metric==='AVG'?h.AVG:metric==='OBP'?h.OBP:metric==='SLG'?h.SLG:metric==='OPS'?(h.PA?h.OPS:null):metric==='PA'?h.PA:metric==='H'?h.H:metric==='swings'?h.swings:metric==='whiffPct'?(h.whiffPct==null?null:h.whiffPct*100):metric==='contactPct'?(h.contactPct==null?null:h.contactPct*100):null;
+      const h=battingSummary(data,{athleteId,date:cur,batterSide,pitcherSide}),pitchMetric=['swings','whiffPct','contactPct'].includes(metric);hasData=pitchMetric?h.events.length>0:h.PA>0;value=metric==='AVG'?h.AVG:metric==='OBP'?h.OBP:metric==='SLG'?h.SLG:metric==='OPS'?(h.PA?h.OPS:null):metric==='PA'?h.PA:metric==='H'?h.H:metric==='swings'?h.swings:metric==='whiffPct'?(h.whiffPct==null?null:h.whiffPct*100):metric==='contactPct'?(h.contactPct==null?null:h.contactPct*100):null;
     } else if(source==='defense'){
       const d=defenseSummary(data,{athleteId,date:cur});hasData=d.plays>0;value=['fieldingSuccessPct','throwSuccessPct'].includes(metric)?(d[metric]==null?null:d[metric]*100):metric==='throwTLU'?d.throwTLU:(d[metric]??null);
     } else if(source==='baserunning'){

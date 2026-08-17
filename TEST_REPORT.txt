@@ -1,80 +1,83 @@
-Baseball Tracker Pro V6.3.0 - Test Report
+Baseball Tracker Pro V6.4.0 - Test Report
 Generated: 2026-08-17
 
-Scope
-- Game Pitching / Game Batting input color redesign
-- BF (Batter Faced) / PA (Plate Appearance) card logs
-- Completed / current / historical-incomplete visual states
-- Per-pitch edit bottom sheet
-- Recalculation after pitch edit/delete
-- History reuse of BF/PA cards
-- PWA version/cache update
+PASS 1. JavaScript syntax
+- node --check js/app.js
+- node --check js/analytics.js
+- node --check js/storage.js
 
-Automated checks passed
-1. JavaScript syntax
-   - js/app.js: PASS (node --check)
-   - js/analytics.js: PASS
-   - js/storage.js: PASS
+PASS 2. PWA/cache version consistency
+- index.html assets use v=6.4.0
+- app.js module imports use v=6.4.0
+- Service Worker cache: baseball-tracker-pro-v6.4.0
+- VERSION: 6.4.0
 
-2. HTML integrity
-   - Duplicate static HTML IDs: 0
-   - pitchEditModal / pitchEditForm and all edit-field IDs present
-   - [hidden]{display:none!important} safety rule retained
+PASS 3. Result-unknown state
+- UNKNOWN parent is not selected as the current BF/PA.
+- Unknown card is visually labeled "결과 미상".
+- Unknown card is collapsed by default.
+- Expanded unknown card exposes "계속 입력" and whole BF/PA delete.
+- No "최종 결과 입력" feature exists.
 
-3. Version/cache consistency
-   - index.html asset query: v=6.3.0
-   - app.js module imports: v=6.3.0
-   - Service Worker cache: baseball-tracker-pro-v6.3.0
-   - Service Worker core assets: v=6.3.0
+PASS 4. Lazy-create / sequence integrity
+- BF/PA creation remains lazy: ensureBF()/ensurePA() are called when the first pitch is recorded, not when the blank next batter/PA is merely shown.
+- Soft-deleted BF/PA sequence numbers are included when choosing the next sequence, so deleted numbers are not reused.
 
-4. Pitching analytics fixture
-   Baseline:
-   - BF #1: Called strike -> Foul -> Swinging strike = K
-   - Summary: 3 official pitches / BF 1 / K 1
-   Edit simulation:
-   - Pitch #3 changed from Swinging strike to BALL
-   - Parent recomputed as incomplete
-   - Summary: 3 official pitches / BF 0 / K 0 / Ball 1
-   Result: PASS
+PASS 5. Parent preservation after child pitch editing/deletion
+Fixture:
+- Completed K parent with 3 strike events.
+- Delete terminal strike -> parent recalculates to incomplete instead of being auto-deleted.
+- UNKNOWN parent with remaining pitch data -> UNKNOWN is preserved.
+- Delete all child pitches -> parent remains present and becomes incomplete.
+- Automatic empty-next-parent cleanup from V6.3 was removed.
 
-5. Batting analytics fixture
-   Baseline:
-   - PA #1 result 2B = PA 1 / H 1 / 2B 1
-   Edit simulation:
-   - IN PLAY result changed 2B -> OUT and PA parent recomputed
-   - Summary: PA 1 / H 0 / OUT 1
-   Result: PASS
+PASS 6. Whole BF/PA delete + Undo implementation
+- Parent card has explicit "타자 기록 삭제 / 타석 기록 삭제".
+- Whole-parent delete soft-deletes parent and all active child pitch events.
+- Undo bundle restores parent and all child pitch events together.
+- Individual pitch delete remains independent.
 
-6. BF/PA editing structure
-   - Only newest incomplete BF/PA is treated as normal current input.
-   - An older BF/PA made incomplete by a correction is not silently reused for new input.
-   - Historical incomplete card exposes '계속 입력' to explicitly resume it.
-   - When resumed, new pitch events append to that original BF/PA.
-   - If the resumed BF/PA completes, resume context is cleared.
-   Result: PASS (static logic inspection + syntax validation)
+PASS 7. Input history limits
+- BF/PA `.slice(0,5)` limit removed.
+- Auxiliary pitching log limit removed.
+- General input timeline `.slice(0,8)` limit removed.
+- Selected-date input screen now renders all records; completed BF/PA remain collapsed for density.
 
-7. Data-integrity guard
-   - Editing an earlier pitch so that the BF/PA would terminate before already-existing later pitches is blocked.
-   - User is instructed to edit/delete the later pitches first.
-   Result: PASS (source assertion)
+PASS 8. Pitching analytics with unknown/incomplete BF
+Fixture:
+- 1 completed BF, 1 UNKNOWN BF, 1 incomplete BF, 6 official pitches.
+Expected/verified:
+- officialPitches = 6
+- BF = 1 (completed only)
+- unknownBF = 1
+- incompleteBF = 1
+- P/BF = 3.00 using only pitches belonging to the completed BF
+- unknown/incomplete pitch events still remain in pitch-count/TLU/Strike%-level data.
 
-8. UI source assertions
-   - Ball count: Green family
-   - Strike count: Amber family
-   - S display: 1 / 2 only (3rd strike completes BF/PA)
-   - BALL: Green
-   - Called / Swinging / Foul: shared Amber family
-   - IN PLAY: Blue
-   - HBP: Red
-   - Pickoff / warm-up: separate Slate/Navy ARM LOAD panel
-   - Completed BF/PA: collapsed by default
-   - Current BF/PA: expanded, Amber state
-   - Historical incomplete BF/PA: expanded, Orange warning state
-   - BF/PA sequence accent cycles through 3 restrained colors
-   Result: PASS
+PASS 9. Batting analytics with unknown/incomplete PA
+Fixture:
+- 1 completed PA, 1 UNKNOWN PA, 1 incomplete PA.
+Expected/verified:
+- PA = 1 (completed only)
+- unknownPA = 1
+- incompletePA = 1
+- pitch-level swings from all three records remain available.
+- Swings graph can render a date containing pitch-level data even if a PA is not completed.
 
-Notes
-- No Supabase schema change is required from V6.2.2 to V6.3.0.
-- migration_v6.sql does NOT need to be rerun solely for this update.
-- Existing V6 data remains compatible.
-- Full live Supabase round-trip still depends on the user's configured Project URL/account environment.
+PASS 10. Analysis UI
+- Game > Pitching breakdown includes 완료 BF / 결과 미상 / 미완료.
+- Game > Batting breakdown includes 완료 PA / 결과 미상 / 미완료.
+- Outcome statistics continue to use completed BF/PA only.
+
+PASS 11. Supabase schema compatibility
+- No new database column/table required.
+- Result-unknown uses the existing `result text` column with the sentinel `UNKNOWN` and `completed=false`.
+- migration_v6.sql does not need to be re-run for a project already on the V6 schema.
+
+Static safeguards
+- `[hidden]{display:none!important}` is still present.
+- No temporary test module is included in the package.
+
+Not executed
+- Live round-trip sync against the user's Supabase project was not run in this environment.
+- GitHub Pages installed-PWA update behavior should be smoke-tested after deployment.
