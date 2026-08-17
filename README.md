@@ -1,4 +1,4 @@
-# Baseball Tracker Pro V6
+# Baseball Tracker Pro V6.1
 
 V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성한 버전입니다.
 
@@ -96,3 +96,9 @@ GitHub → Settings → Pages:
 ## 오프라인
 
 기록은 IndexedDB에 먼저 저장됩니다. 인터넷이 없어도 입력할 수 있고, 로그인 상태에서 인터넷이 복구되면 Supabase로 자동 동기화됩니다.
+
+
+## V6.1 hotfix
+- Fixed startup bug where elements with the HTML `hidden` attribute were still rendered because component CSS declared `display:grid`/`display:flex`.
+- Added `[hidden]{display:none!important}` globally.
+- Bumped the service-worker cache to `baseball-tracker-pro-v6.1.0` so GitHub Pages/PWA clients receive the corrected stylesheet.

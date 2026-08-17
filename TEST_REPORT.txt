@@ -43,3 +43,10 @@ Every V6 game event/training set is written with the selected `activityDate`; `r
 
 6. Supabase
 Schema and RLS SQL included. Actual project round-trip cannot be executed without the user's Project URL/session. Run migration_v6.sql before testing cloud sync.
+
+
+V6.1 HOTFIX TEST
+- Global [hidden] CSS rule present: PASS
+- athletePicker/athleteModal/inPlayModal/recordEditModal initial hidden attribute: PASS
+- undoBar initial hidden attribute: PASS
+- service worker cache bumped to baseball-tracker-pro-v6.1.0: PASS
