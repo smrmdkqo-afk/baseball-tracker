@@ -1,5 +1,5 @@
-import {openDB,getAll,getOne,putOne,putMany,deleteOne,getMeta,setMeta,snapshot,replaceSnapshot,ensureInitialData,migrateV5LocalIfNeeded,uuid,iso,todayKey,stamp} from './storage.js?v=6.5.0';
-import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,analysisSnapshot,analysisMetricValue,analysisSeries,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2} from './analytics.js?v=6.5.0';
+import {openDB,getAll,getOne,putOne,putMany,deleteOne,getMeta,setMeta,snapshot,replaceSnapshot,ensureInitialData,migrateV5LocalIfNeeded,uuid,iso,todayKey,stamp} from './storage.js?v=6.5.1';
+import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,analysisSnapshot,analysisMetricValue,analysisSeries,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2,canonicalGameEvents,gameEventIntegrity} from './analytics.js?v=6.5.1';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const storeNames=['athletes','gameDays','batterFaced','plateAppearances','gameEvents','trainingSets'];
@@ -31,7 +31,8 @@ function refreshDataStore(store,items){data[store]=items;}
 async function reloadData(){for(const s of storeNames)refreshDataStore(s,await getAll(s));activeAthleteId=await getMeta('activeAthleteId',active(data.athletes)[0]?.id||null);}
 function markLocal(obj){return stamp(obj,{dirty:true});}
 async function save(store,obj,{render=true,sync=true}={}){markLocal(obj);await putOne(store,obj);const i=data[store].findIndex(x=>x.id===obj.id);if(i>=0)data[store][i]=obj;else data[store].push(obj);if(render)renderAll();if(sync)scheduleSync();return obj;}
-function recordsFor(store){return active(data[store]).filter(x=>x.athleteId===activeAthleteId);}
+function recordsFor(store){if(store==='gameEvents')return canonicalGameEvents(data,{athleteId:activeAthleteId});return active(data[store]).filter(x=>x.athleteId===activeAthleteId);}
+function logIntegrity(context='runtime'){if(!activeAthleteId)return;const q=gameEventIntegrity(data,{athleteId:activeAthleteId});if(q.total)console.warn(`[Baseball Tracker] ${context}: 분석/기록에서 제외된 비정상 game event ${q.total}건 (orphan pitching ${q.orphanPitching}, orphan hitting ${q.orphanHitting})`,q.invalid);}
 function getGameDay(date=ui.inputDate){return recordsFor('gameDays').find(x=>x.activityDate===date);}
 async function ensureGameDay(date=ui.inputDate){let x=getGameDay(date);if(x)return x;x={id:uuid(),athleteId:activeAthleteId,activityDate:date,ownerId:cloud.session?.user?.id||null,deletedAt:null,createdAt:iso(),updatedAt:iso(),clientUpdatedAt:Date.now(),dirty:true};await save('gameDays',x,{render:false});return x;}
 function isUnknownParent(p){return !!p&&!p.completed&&p.result===UNKNOWN_RESULT;}
@@ -58,6 +59,7 @@ async function init(){
   await withTimeout(migrateV5LocalIfNeeded(),12000,'기존 데이터 변환');
   await withTimeout(ensureInitialData(),6000,'초기 데이터 준비');
   await withTimeout(reloadData(),8000,'기록 불러오기');
+  logIntegrity('startup');
   ui.inputDate=todayKey();ui.analysisTo=todayKey();ui.analysisFrom=dateShift(todayKey(),-29);
   renderAll();
   window.__BT_APP_READY__=true;
@@ -165,7 +167,7 @@ function renderRecent(){
   if(ui.inputMode==='game'&&['pitching','hitting'].includes(ui.domain)){
     const kind=ui.domain==='pitching'?'bf':'pa',parents=parentsFor(kind,ui.inputDate);let html=parents.map(p=>parentCardHtml(kind,p)).join('');
     if(ui.domain==='pitching'){
-      const aux=active(data.gameEvents).filter(e=>e.athleteId===activeAthleteId&&e.activityDate===ui.inputDate&&e.domain==='pitching'&&!e.parentId).sort((a,b)=>new Date(b.recordedAt)-new Date(a.recordedAt));
+      const aux=recordsFor('gameEvents').filter(e=>e.activityDate===ui.inputDate&&e.domain==='pitching'&&!e.parentId).sort((a,b)=>new Date(b.recordedAt)-new Date(a.recordedAt));
       if(aux.length)html+=`<div class="aux-log"><b>견제 · 연습투구</b>${aux.map(e=>recordRowHtml({store:'gameEvents',id:e.id,activityDate:e.activityDate,recordedAt:e.recordedAt,mode:'game',domain:e.domain,label:gameEventLabel(e),sub:gameEventSub(e)})).join('')}</div>`;
     }
     el.innerHTML=html||'<div class="scope-note">아직 입력된 기록이 없습니다.</div>';return;
@@ -174,7 +176,7 @@ function renderRecent(){
 }
 function collectTimeline({date='all',mode='all',domain='all'}={}){
   const out=[];
-  for(const e of active(data.gameEvents).filter(x=>x.athleteId===activeAthleteId)){
+  for(const e of recordsFor('gameEvents')){
     if(e.parentId&&['pitching','hitting','batting'].includes(e.domain))continue;
     if(date!=='all'&&e.activityDate!==date)continue;if(mode==='training')continue;if(domain!=='all'&&e.domain!==domain)continue;out.push({store:'gameEvents',id:e.id,activityDate:e.activityDate,recordedAt:e.recordedAt,mode:'game',domain:e.domain,label:gameEventLabel(e),sub:gameEventSub(e)});
   }
@@ -198,13 +200,13 @@ function fieldResultLabel(v){return v==='success'?'포구 성공':v==='unstable'
 function recordRowHtml(r){return `<div class="recent-item"><span class="record-time">${fmtTime(r.recordedAt)}</span><span class="record-icon">${r.mode==='game'?'G':'T'}</span><span class="record-copy"><b>${esc(r.label)}</b><small>${esc(r.sub||'')}</small></span><span class="record-actions"><button data-edit-store="${r.store}" data-edit-id="${r.id}">수정</button><button data-delete-store="${r.store}" data-delete-id="${r.id}">삭제</button></span></div>`;}
 function historySection(title,content,count){return content?`<div class="history-subsection"><h4>${title}<span>${count}</span></h4>${content}</div>`:'';}
 function renderHistory(){
-  const allDates=[...new Set([...active(data.gameEvents),...active(data.trainingSets),...active(data.batterFaced),...active(data.plateAppearances)].filter(x=>x.athleteId===activeAthleteId).map(x=>x.activityDate))].sort().reverse();
+  const allDates=[...new Set([...recordsFor('gameEvents'),...recordsFor('trainingSets'),...recordsFor('batterFaced'),...recordsFor('plateAppearances')].map(x=>x.activityDate))].sort().reverse();
   const sel=$('#historyDate'),old=ui.historyDate;sel.innerHTML='<option value="all">모든 날짜</option>'+allDates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');sel.value=allDates.includes(old)?old:'all';ui.historyDate=sel.value;
   $$('#historyMode button').forEach(b=>b.classList.toggle('active',b.dataset.historyMode===ui.historyMode));$$('#historyDomain button').forEach(b=>b.classList.toggle('active',b.dataset.historyDomain===ui.historyDomain));
   const dates=(ui.historyDate==='all'?allDates:[ui.historyDate]).filter(Boolean);let grand=0,html='';
   for(const date of dates){let body='',count=0;
     if(ui.historyMode!=='training'){
-      if(ui.historyDomain==='all'||ui.historyDomain==='pitching'){const ps=parentsFor('bf',date),aux=active(data.gameEvents).filter(e=>e.athleteId===activeAthleteId&&e.activityDate===date&&e.domain==='pitching'&&!e.parentId).sort((a,b)=>new Date(b.recordedAt)-new Date(a.recordedAt));const c=ps.map(p=>parentCardHtml('bf',p)).join('')+(aux.length?`<div class="aux-log">${aux.map(e=>recordRowHtml({store:'gameEvents',id:e.id,activityDate:e.activityDate,recordedAt:e.recordedAt,mode:'game',domain:'pitching',label:gameEventLabel(e),sub:gameEventSub(e)})).join('')}</div>`:'');body+=historySection('경기 · 투구',c,ps.length+aux.length);count+=ps.length+aux.length;}
+      if(ui.historyDomain==='all'||ui.historyDomain==='pitching'){const ps=parentsFor('bf',date),aux=recordsFor('gameEvents').filter(e=>e.activityDate===date&&e.domain==='pitching'&&!e.parentId).sort((a,b)=>new Date(b.recordedAt)-new Date(a.recordedAt));const c=ps.map(p=>parentCardHtml('bf',p)).join('')+(aux.length?`<div class="aux-log">${aux.map(e=>recordRowHtml({store:'gameEvents',id:e.id,activityDate:e.activityDate,recordedAt:e.recordedAt,mode:'game',domain:'pitching',label:gameEventLabel(e),sub:gameEventSub(e)})).join('')}</div>`:'');body+=historySection('경기 · 투구',c,ps.length+aux.length);count+=ps.length+aux.length;}
       if(ui.historyDomain==='all'||ui.historyDomain==='hitting'){const ps=parentsFor('pa',date),c=ps.map(p=>parentCardHtml('pa',p)).join('');body+=historySection('경기 · 타격',c,ps.length);count+=ps.length;}
       for(const d of ['defense','baserunning'])if(ui.historyDomain==='all'||ui.historyDomain===d){const rs=collectTimeline({date,mode:'game',domain:d});body+=historySection(`경기 · ${DOMAIN_LABEL[d]}`,rs.map(recordRowHtml).join(''),rs.length);count+=rs.length;}
     }
@@ -225,7 +227,7 @@ function analysisRange(){
     let from=ui.analysisFrom||dateShift(today,-29),to=ui.analysisTo||today;if(from>to)[from,to]=[to,from];
     return {from,to,label:`${fmtDate(from)} ~ ${fmtDate(to)}`};
   }
-  const dates=[...active(data.gameEvents),...active(data.trainingSets),...active(data.batterFaced),...active(data.plateAppearances),...active(data.gameDays)].filter(x=>x.athleteId===activeAthleteId).map(x=>x.activityDate).filter(Boolean).sort();
+  const dates=[...recordsFor('gameEvents'),...recordsFor('trainingSets'),...recordsFor('batterFaced'),...recordsFor('plateAppearances'),...recordsFor('gameDays')].map(x=>x.activityDate).filter(Boolean).sort();
   return {from:dates[0]||today,to:dates.at(-1)||today,label:'전체'};
 }
 
@@ -601,7 +603,7 @@ async function saveEditedRecord(e){e.preventDefault();const store=$('#editRecord
   hideModal('recordEditModal');renderAll();showToast('기록 수정 완료');}
 
 async function exportBackup(){const out=await snapshot();out.exportedAt=iso();out.version=6;const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`baseball-tracker-v6-${todayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-async function importBackup(e){const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());if(Number(raw.version||0)!==6&&!raw.athletes)throw new Error('V6 백업 형식이 아닙니다.');if(!confirm('현재 로컬 데이터를 백업 파일로 교체할까요?'))return;await replaceSnapshot(raw);await reloadData();renderAll();showToast('백업 복원 완료');}catch(err){console.error(err);showToast('백업 복원 실패',err.message||'파일을 확인하세요.');}finally{e.target.value='';}}
+async function importBackup(e){const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());if(Number(raw.version||0)!==6&&!raw.athletes)throw new Error('V6 백업 형식이 아닙니다.');if(!confirm('현재 로컬 데이터를 백업 파일로 교체할까요?'))return;await replaceSnapshot(raw);await reloadData();logIntegrity('backup restore');renderAll();showToast('백업 복원 완료');}catch(err){console.error(err);showToast('백업 복원 실패',err.message||'파일을 확인하세요.');}finally{e.target.value='';}}
 
 function cloudConfig(){const c=window.BASEBALL_SUPABASE_CONFIG||{},url=String(c.url||''),key=String(c.publishableKey||'');return {url,key,valid:url.startsWith('https://')&&!url.includes('YOUR-PROJECT')&&key.startsWith('sb_publishable_')};}
 function ensureSupabaseSdk(){if(window.supabase?.createClient)return Promise.resolve(true);return new Promise(resolve=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.async=true;s.onload=()=>resolve(!!window.supabase?.createClient);s.onerror=()=>resolve(false);document.head.appendChild(s);setTimeout(()=>resolve(!!window.supabase?.createClient),8000);});}
@@ -634,7 +636,7 @@ async function syncCloud(manual=false){if(cloud.syncing||!cloud.client||!cloud.s
   for(const store of storeNames){const def=cloudDefs[store],dirty=data[store].filter(x=>x.ownerId===uid&&x.dirty);if(!dirty.length)continue;for(let i=0;i<dirty.length;i+=100){const chunk=dirty.slice(i,i+100),{error}=await cloud.client.from(def.table).upsert(chunk.map(def.to),{onConflict:'id'});if(error)throw error;for(const rec of chunk){rec.dirty=false;await putOne(store,rec);}}}
   // Pull and merge by client timestamp.
   for(const store of storeNames){const def=cloudDefs[store],{data:rows,error}=await cloud.client.from(def.table).select('*').eq('owner_id',uid);if(error)throw error;const localMap=new Map(data[store].map(x=>[x.id,x]));for(const row of rows||[]){const remote=def.from(row),local=localMap.get(remote.id);if(!local||Number(remote.clientUpdatedAt)>=Number(local.clientUpdatedAt||0)){await putOne(store,remote);localMap.set(remote.id,remote);}}data[store]=[...localMap.values()];}
-  cloud.lastSync=Date.now();localStorage.setItem('btV6LastSync',cloud.lastSync);renderAll();renderCloudUI();if(manual)showToast('동기화 완료','클라우드와 기록을 맞췄습니다.');
+  cloud.lastSync=Date.now();localStorage.setItem('btV6LastSync',cloud.lastSync);logIntegrity('cloud sync');renderAll();renderCloudUI();if(manual)showToast('동기화 완료','클라우드와 기록을 맞췄습니다.');
  }catch(err){console.error(err);renderCloudStatus('error','동기화 실패');$('#cloudStatusText').textContent=`동기화 실패: ${err.message||err}`;if(manual)showToast('동기화 실패',err.message||'Supabase 설정을 확인하세요.');}finally{cloud.syncing=false;renderCloudStatus();}}
 
 function registerPWA(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#installMini').style.display='inline-block';});}

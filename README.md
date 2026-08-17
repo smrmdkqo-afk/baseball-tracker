@@ -1,8 +1,22 @@
-# Baseball Tracker Pro V6.5.0
+# Baseball Tracker Pro V6.5.1
 
-V6.5.0은 V6.4의 입력·기록 구조를 유지하면서 **분석 엔진과 분석 탭 UI를 전면 개편**한 버전입니다. 새로운 입력 항목은 추가하지 않습니다.
+V6.5.1은 V6.4의 입력·기록 구조를 유지하면서 **분석 엔진과 분석 탭 UI를 전면 개편**한 버전입니다. 새로운 입력 항목은 추가하지 않습니다.
 
-## V6.5.0 핵심 변경
+## V6.5.1 기록/분석 데이터 일치 Hotfix
+
+V6.5.0에서는 부모 BF가 없거나 삭제된 공식 pitch event가 History의 BF 카드에는 보이지 않지만 분석에는 포함될 수 있었습니다. V6.5.1은 게임 이벤트의 유효성 판정을 하나의 canonical rule로 통일합니다.
+
+- 공식 투구 pitch: 활성 `batter_faced` 부모가 있어야 유효
+- 타격 pitch: 활성 `plate_appearance` 부모가 있어야 유효
+- 견제/연습투구: 원래 부모가 없으므로 계속 유효
+- 수비/주루: 원래 부모가 없으므로 계속 유효
+- 부모가 없거나 삭제된 orphan pitch는 기록/홈/분석에서 모두 제외
+- orphan row 자체는 IndexedDB/Supabase에서 자동 삭제하지 않음
+- startup / backup restore / cloud sync 후 내부 integrity diagnostic을 콘솔에 남김
+
+이 변경으로 **기록 화면에서 보이는 유효 기록과 홈/분석이 계산하는 공식 pitch의 기준이 동일**해집니다.
+
+## V6.5.1 핵심 변경
 
 ### 분석 화면 구조
 - `경기 성과` / `훈련 · 워크로드` 분리
@@ -178,10 +192,10 @@ Pitch 기반 과정 지표는 결과 미상/미완료 상태에서도 이미 입
 - 완료 결과 기반: K%, BB%, AVG, OBP, SLG, OPS
 
 ## DB / 배포
-- V6.5.0은 Supabase 스키마를 변경하지 않습니다.
+- V6.5.1은 Supabase 스키마를 변경하지 않습니다.
 - V6 migration을 이미 실행했다면 추가 SQL 실행이 필요 없습니다.
-- GitHub Pages의 기존 파일을 V6.5.0 파일로 교체하면 됩니다.
-- Service Worker cache key는 `baseball-tracker-pro-v6.5.0`입니다.
+- GitHub Pages의 기존 파일을 V6.5.1 파일로 교체하면 됩니다.
+- Service Worker cache key는 `baseball-tracker-pro-v6.5.1`입니다.
 
 ## 주요 파일
 - `index.html`

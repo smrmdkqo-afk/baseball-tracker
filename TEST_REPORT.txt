@@ -1,50 +1,73 @@
-Baseball Tracker Pro V6.5.0 - Test Report
+Baseball Tracker Pro V6.5.1 - Test Report
 Date: 2026-08-17
+
+Scope
+- Fix mismatch where History showed no BF/PA pitch records but Home/Analysis could still count orphan pitch events.
+- Introduce one canonical validity rule for game events.
+- Preserve orphan rows in IndexedDB/Supabase; exclude them from normal display/statistics rather than deleting user data.
 
 1. JavaScript syntax
 PASS - js/app.js: node --check
 PASS - js/analytics.js: node --check
+PASS - js/storage.js: node --check
 
-2. Analysis engine fixture
-PASS - Official Pitch count
-PASS - CSW% calculation
-PASS - K-BB% calculation
-PASS - Game TLU including pickoff
-PASS - game-by-game trend series
-PASS - month aggregation recomputes from raw numerator/denominator instead of averaging game percentages
-PASS - batting AVG / SLG / ISO / P/PA fixture
+2. Canonical game-event validity
+PASS - pitching pitch with active batter_faced parent is valid
+PASS - pitching pitch whose BF is missing is invalid
+PASS - pitching pitch whose BF is soft-deleted is invalid
+PASS - parentless official BALL/strike pitch is invalid
+PASS - pickoff_normal / pickoff_error / game_warmup remain valid without BF
+PASS - hitting pitch with active plate_appearance parent is valid
+PASS - hitting pitch whose PA is missing/deleted is invalid
+PASS - parentless defense / baserunning events remain valid
 
-Fixture example:
-- Game 1 Strike% = 100%
-- Game 2 Strike% = 20%
-- Combined monthly Strike% = 50% based on 4 strikes / 8 official pitches
-- It is NOT calculated as an arbitrary average of already rounded display values.
+3. Orphan-pitch regression fixture
+Fixture contained:
+- 9 official pitching events pointing to a missing BF
+- 1 official pitching event pointing to a deleted BF
+- 1 parentless official pitching event
+- 1 valid official pitch under an active BF
+- 1 valid warm-up throw with no parent
+- 1 orphan hitting pitch and 1 valid hitting pitch
 
-3. Analysis render smoke test
-PASS - empty Pitching analysis renders metric groups and Strike% detail
-PASS - Training/Workload ALL overview renders Total TLU cards
-PASS - Hitting analysis renders OPS and BABIP cards
-PASS - no legacy analysisDate / metricSelect / mainChart element dependency remains
-PASS - all new static analysis control IDs exist in index.html
+Observed:
+PASS - canonical valid event IDs contained only the valid BF pitch, warm-up, and valid PA pitch
+PASS - Pitching Official Pitches = 1 (orphan official pitches excluded)
+PASS - Pitching Strike% = 100% from the one visible/valid official pitch
+PASS - Warm-up remains counted in Game TLU
+PASS - Batting pitch count = 1 (orphan PA event excluded)
+PASS - Home official pitch count uses the same canonical result
+PASS - integrity diagnostic detects orphan pitching/hitting rows without deleting them
 
-4. PWA version consistency
-PASS - index.html assets use v=6.5.0
-PASS - app.js imports use v=6.5.0
-PASS - Service Worker cache = baseball-tracker-pro-v6.5.0
-PASS - VERSION = 6.5.0
+4. Analysis-series regression
+Fixture contained a valid game on 8/10 and only an orphan pitch event on 8/11.
+PASS - game-by-game analysis series contains 8/10 only
+PASS - orphan-only 8/11 does not create a false graph point
 
-5. DB compatibility
-PASS - no Supabase schema change introduced by V6.5.0
-PASS - migration_v6.sql remains compatible and unchanged for existing V6 users
+5. Home / History / Analysis consistency
+PASS - app.js recordsFor('gameEvents') uses canonicalGameEvents()
+PASS - Input recent auxiliary log uses canonical game events
+PASS - History date/event collection uses canonical game events
+PASS - History pitching auxiliary rows use canonical game events
+PASS - Analysis range derives game-event dates from canonical events
+PASS - Home statistics call analytics functions that use canonical events
 
-6. Analysis UI behavior implemented
-PASS - period and view unit are independent
-PASS - game view: game/week/month/year
-PASS - training view: day/week/month/year
-PASS - KPI cards contain Sparkline
-PASS - metric card selection updates the in-page large detail chart; no modal is used
-PASS - point elements are touch/click selectable and update the detail information area
-PASS - general controls remain Korean; English-first presentation applies to analysis metrics
+6. Data preservation
+PASS - no automatic deletion/cleanup of orphan IndexedDB or Supabase rows was added
+PASS - invalid rows are only ignored by canonical display/statistics paths
+PASS - internal console diagnostic reports invalid row counts after startup, backup restore, and cloud sync
 
-Environment note:
-The execution environment blocks Chromium navigation to localhost/private addresses by policy. Browser-specific integration was therefore covered with JavaScript syntax checks, the analytics fixture, and a DOM render smoke harness rather than localhost Chromium navigation.
+7. PWA version consistency
+PASS - index.html assets use v=6.5.1
+PASS - app.js imports use v=6.5.1
+PASS - Service Worker cache = baseball-tracker-pro-v6.5.1
+PASS - VERSION = 6.5.1
+
+8. Database compatibility
+PASS - no Supabase schema change
+PASS - existing migration_v6.sql remains valid
+PASS - no SQL needs to be rerun when upgrading from V6.5.0
+
+Important behavior after update
+- If the previously displayed Pitches=9 / Strike%=17% came from orphan official-pitch rows, those values will disappear immediately from Home/Analysis after V6.5.1 loads.
+- The orphan rows remain preserved in local/cloud storage for safety.

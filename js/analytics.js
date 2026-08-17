@@ -10,18 +10,58 @@ export function inDateRange(date,from,to){return (!from||date>=from)&&(!to||date
 export function dateShift(base,delta){const d=new Date(`${base}T12:00:00`);d.setDate(d.getDate()+delta);return localDate(d);}
 export function localDate(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;}
 
-function parentMaps(data){return {bf:new Map(active(data.batterFaced).map(x=>[x.id,x])),pa:new Map(active(data.plateAppearances).map(x=>[x.id,x]))};}
+
+export const AUX_PITCH_TYPES=new Set(['pickoff_normal','pickoff_error','game_warmup']);
+
+export function canonicalParentMaps(data,{athleteId=null}={}){
+  const bf=new Map(active(data.batterFaced).filter(x=>!athleteId||x.athleteId===athleteId).map(x=>[x.id,x]));
+  const pa=new Map(active(data.plateAppearances).filter(x=>!athleteId||x.athleteId===athleteId).map(x=>[x.id,x]));
+  return {bf,pa};
+}
+function parentMaps(data,athleteId=null){return canonicalParentMaps(data,{athleteId});}
+function parentForEvent(e,maps){if(e.parentType==='batter_faced')return maps.bf.get(e.parentId)||null;if(e.parentType==='plate_appearance')return maps.pa.get(e.parentId)||null;return null;}
+function scopeRecordForEvent(e,maps){return parentForEvent(e,maps)||e;}
+export function isCanonicalGameEvent(data,e,{athleteId=null,maps=null}={}){
+  if(!e||e.deletedAt)return false;
+  if(athleteId&&e.athleteId!==athleteId)return false;
+  const pm=maps||canonicalParentMaps(data,{athleteId});
+  if(e.parentType==='batter_faced'){
+    const p=pm.bf.get(e.parentId);
+    return !!p&&p.athleteId===e.athleteId&&e.domain==='pitching';
+  }
+  if(e.parentType==='plate_appearance'){
+    const p=pm.pa.get(e.parentId);
+    return !!p&&p.athleteId===e.athleteId&&['hitting','batting'].includes(e.domain);
+  }
+  if(e.parentType||e.parentId)return false;
+  if(e.domain==='pitching')return AUX_PITCH_TYPES.has(e.eventType);
+  return e.domain==='defense'||e.domain==='baserunning';
+}
+export function canonicalGameEvents(data,{athleteId=null}={}){
+  const maps=canonicalParentMaps(data,{athleteId});
+  return active(data.gameEvents).filter(e=>isCanonicalGameEvent(data,e,{athleteId,maps}));
+}
+export function gameEventIntegrity(data,{athleteId=null}={}){
+  const maps=canonicalParentMaps(data,{athleteId}),all=active(data.gameEvents).filter(e=>!athleteId||e.athleteId===athleteId),invalid=[];
+  for(const e of all)if(!isCanonicalGameEvent(data,e,{athleteId,maps}))invalid.push(e);
+  return {
+    invalid,
+    orphanPitching:invalid.filter(e=>e.domain==='pitching'&&OFFICIAL_PITCH_TYPES.has(e.eventType)).length,
+    orphanHitting:invalid.filter(e=>['hitting','batting'].includes(e.domain)).length,
+    total:invalid.length
+  };
+}
 function athleteThrowSide(data,athleteId){const a=active(data.athletes).find(x=>x.id===athleteId);return a&&['R','L'].includes(a.throws)?a.throws:null;}
 function nonBfThrowSide(data,e,athleteId){return e.metadata?.throwSide||athleteThrowSide(data,athleteId)||null;}
 function matchDateAndGame(x,{date=null,from=null,to=null,gameDayId=null}={}){return (!gameDayId||x.gameDayId===gameDayId)&&(date?x.activityDate===date:inDateRange(x.activityDate,from,to));}
 function ratioObject(obj){const total=Object.values(obj||{}).reduce((a,v)=>a+Number(v||0),0),out={};for(const [k,v] of Object.entries(obj||{}))out[k]=pct(Number(v||0),total);return {total,ratios:out};}
 
 export function gamePitchingSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null,pitcherSide=null,batterSide=null}={}){
-  const maps=parentMaps(data);
-  const all=active(data.gameEvents).filter(e=>e.athleteId===athleteId&&e.domain==='pitching'&&matchDateAndGame(e,{date,from,to,gameDayId}));
+  const maps=parentMaps(data,athleteId);
+  const all=canonicalGameEvents(data,{athleteId}).filter(e=>e.domain==='pitching'&&matchDateAndGame(scopeRecordForEvent(e,maps),{date,from,to,gameDayId}));
   const events=all.filter(e=>{
     if(e.parentType==='batter_faced'){
-      const bf=maps.bf.get(e.parentId);if(!bf)return !pitcherSide&&!batterSide;
+      const bf=maps.bf.get(e.parentId);
       if(pitcherSide&&bf.pitcherSide!==pitcherSide)return false;
       if(batterSide&&bf.batterSide!==batterSide)return false;
       return true;
@@ -70,7 +110,7 @@ export function battingSummary(data,{athleteId,date=null,from=null,to=null,gameD
   const pas=active(data.plateAppearances).filter(p=>p.athleteId===athleteId&&matchDateAndGame(p,{date,from,to,gameDayId})&&(!batterSide||p.batterSide===batterSide)&&(!pitcherSide||p.pitcherSide===pitcherSide));
   const completed=pas.filter(p=>p.completed&&p.result),unknown=pas.filter(p=>!p.completed&&p.result==='UNKNOWN'),incomplete=pas.filter(p=>!p.completed&&p.result!=='UNKNOWN');
   const paIds=new Set(pas.map(p=>p.id));
-  const events=active(data.gameEvents).filter(e=>e.athleteId===athleteId&&['hitting','batting'].includes(e.domain)&&e.parentType==='plate_appearance'&&paIds.has(e.parentId));
+  const events=canonicalGameEvents(data,{athleteId}).filter(e=>['hitting','batting'].includes(e.domain)&&e.parentType==='plate_appearance'&&paIds.has(e.parentId));
   const counts={};for(const p of completed)counts[p.result]=(counts[p.result]||0)+1;
   const H=(counts['1B']||0)+(counts['2B']||0)+(counts['3B']||0)+(counts.HR||0),BB=counts.BB||0,HBP=counts.HBP||0,SF=counts.SF||0,SH=counts.SH||0,SO=counts.SO||0,ROE=counts.ROE||0,HR=counts.HR||0;
   const AB=completed.length-BB-HBP-SF-SH,TB=(counts['1B']||0)+2*(counts['2B']||0)+3*(counts['3B']||0)+4*HR,AVG=pct(H,AB),OBP=pct(H+BB+HBP,AB+BB+HBP+SF),SLG=pct(TB,AB),OPS=OBP==null||SLG==null?null:OBP+SLG,ISO=AVG==null||SLG==null?null:SLG-AVG;
@@ -91,7 +131,7 @@ export function battingSummary(data,{athleteId,date=null,from=null,to=null,gameD
 function isOutfieldPosition(p){return ['LF','CF','RF'].includes(String(p||'').toUpperCase());}
 function fieldTypeBucket(m){return isOutfieldPosition(m.position)||m.positionGroup==='OF'?'OF':'IF';}
 export function defenseSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null,throwSide=null}={}){
-  const events=active(data.gameEvents).filter(e=>e.athleteId===athleteId&&e.domain==='defense'&&matchDateAndGame(e,{date,from,to,gameDayId})&&e.eventType==='fielding_play'&&(!throwSide||((e.metadata?.throwSide||athleteThrowSide(data,athleteId))===throwSide)));
+  const events=canonicalGameEvents(data,{athleteId}).filter(e=>e.domain==='defense'&&matchDateAndGame(e,{date,from,to,gameDayId})&&e.eventType==='fielding_play'&&(!throwSide||((e.metadata?.throwSide||athleteThrowSide(data,athleteId))===throwSide)));
   const field={success:0,unstable:0,failed:0},throws={success:0,error:0,none:0},ifTypes={},ofTypes={},targets={},targetStats={},fieldTypeThrowStats={};let throwTLU=0;
   for(const e of events){const m=e.metadata||{};if(m.fieldingResult)field[m.fieldingResult]=(field[m.fieldingResult]||0)+1;if(m.throwResult)throws[m.throwResult]=(throws[m.throwResult]||0)+1;
     if(m.throwTarget){targets[m.throwTarget]=(targets[m.throwTarget]||0)+1;const x=targetStats[m.throwTarget]||(targetStats[m.throwTarget]={attempts:0,success:0,error:0});if(['success','error'].includes(m.throwResult)){x.attempts++;x[m.throwResult]++;}}
@@ -104,7 +144,7 @@ export function defenseSummary(data,{athleteId,date=null,from=null,to=null,gameD
 }
 
 export function baserunningSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null}={}){
-  const events=active(data.gameEvents).filter(e=>e.athleteId===athleteId&&e.domain==='baserunning'&&matchDateAndGame(e,{date,from,to,gameDayId}));
+  const events=canonicalGameEvents(data,{athleteId}).filter(e=>e.domain==='baserunning'&&matchDateAndGame(e,{date,from,to,gameDayId}));
   const steals=events.filter(e=>e.eventType==='steal_attempt'),sb=steals.filter(e=>e.metadata?.result==='SUCCESS').length,cs=steals.filter(e=>e.metadata?.result==='FAILED').length,routes={};
   for(const e of steals){const key=`${e.metadata?.from||'?'}>${e.metadata?.to||'?'}`,x=routes[key]||(routes[key]={attempts:0,success:0,failed:0});x.attempts++;if(e.metadata?.result==='SUCCESS')x.success++;else if(e.metadata?.result==='FAILED')x.failed++;}
   for(const x of Object.values(routes))x.successPct=pct(x.success,x.attempts);
@@ -173,12 +213,13 @@ function yearEnd(date){return `${date.slice(0,4)}-12-31`;}
 function clampRange(start,end,from,to){return {from:start<from?from:start,to:end>to?to:end};}
 function relevantDates(data,{athleteId,source,domain,metric,from,to}){
   const out=[];
+  const maps=canonicalParentMaps(data,{athleteId}),validEvents=canonicalGameEvents(data,{athleteId});
   if(source==='game'){
-    if(domain==='pitching'){for(const x of active(data.gameEvents))if(x.athleteId===athleteId&&x.domain==='pitching'&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);for(const x of active(data.batterFaced))if(x.athleteId===athleteId&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);}
-    else if(domain==='hitting'){for(const x of active(data.gameEvents))if(x.athleteId===athleteId&&['hitting','batting'].includes(x.domain)&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);for(const x of active(data.plateAppearances))if(x.athleteId===athleteId&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);}
-    else for(const x of active(data.gameEvents))if(x.athleteId===athleteId&&x.domain===domain&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);
+    if(domain==='pitching'){for(const x of validEvents)if(x.domain==='pitching'){const d=scopeRecordForEvent(x,maps).activityDate;if(inDateRange(d,from,to))out.push(d);}for(const x of active(data.batterFaced))if(x.athleteId===athleteId&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);}
+    else if(domain==='hitting'){for(const x of validEvents)if(['hitting','batting'].includes(x.domain)){const d=scopeRecordForEvent(x,maps).activityDate;if(inDateRange(d,from,to))out.push(d);}for(const x of active(data.plateAppearances))if(x.athleteId===athleteId&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);}
+    else for(const x of validEvents)if(x.domain===domain&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);
   }else{
-    if(metric==='total_tlu'){for(const x of active(data.gameEvents))if(x.athleteId===athleteId&&['pitching','defense'].includes(x.domain)&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);for(const x of active(data.trainingSets))if(x.athleteId===athleteId&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);}
+    if(metric==='total_tlu'){for(const x of validEvents)if(['pitching','defense'].includes(x.domain)){const d=scopeRecordForEvent(x,maps).activityDate;if(inDateRange(d,from,to))out.push(d);}for(const x of active(data.trainingSets))if(x.athleteId===athleteId&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);}
     else for(const x of active(data.trainingSets))if(x.athleteId===athleteId&&(domain==='all'||x.domain===domain)&&inDateRange(x.activityDate,from,to))out.push(x.activityDate);
   }
   return [...new Set(out)].sort();
