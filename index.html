@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Baseball Tracker" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Baseball Tracker Pro V6.4.0</title>
-  <link rel="manifest" href="manifest.webmanifest?v=6.4.0" />
+  <title>Baseball Tracker Pro V6.5.0</title>
+  <link rel="manifest" href="manifest.webmanifest?v=6.5.0" />
   <link rel="icon" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=6.4.0" />
+  <link rel="stylesheet" href="styles.css?v=6.5.0" />
 </head>
 <body>
 <div id="app" class="app-shell">
@@ -57,20 +57,24 @@
     </section>
 
     <section class="view" data-view="analysis">
-      <div class="page-intro"><div><p class="kicker">ANALYTICS</p><h2>분석</h2></div><span class="status-note">성과와 훈련량을 분리</span></div>
+      <div class="page-intro"><div><p class="kicker">분석 대시보드</p><h2>분석</h2></div><span class="status-note">요약 → 추이 → 세부 분석</span></div>
       <section class="analysis-controls">
         <div id="analysisSourceTabs" class="segmented-control"><button class="active" data-analysis-source="game">경기 성과</button><button data-analysis-source="training">훈련 · 워크로드</button></div>
-        <div class="analysis-row"><div id="analysisPeriodTabs" class="mini-tabs"><button data-period="date">날짜</button><button data-period="7">7일</button><button class="active" data-period="30">30일</button><button data-period="season">시즌</button><button data-period="all">전체</button></div><input id="analysisDate" class="analysis-date" type="date" hidden /></div>
-        <div id="analysisDomainTabs" class="domain-tabs"><button class="active" data-analysis-domain="pitching">투구</button><button data-analysis-domain="hitting">타격</button><button data-analysis-domain="defense">수비</button><button data-analysis-domain="baserunning">주루</button></div>
+        <div id="analysisDomainTabs" class="domain-tabs analysis-domain-tabs"><button data-analysis-domain="all" hidden>전체</button><button class="active" data-analysis-domain="pitching">투구</button><button data-analysis-domain="hitting">타격</button><button data-analysis-domain="defense">수비</button><button data-analysis-domain="baserunning">주루</button></div>
+        <div class="analysis-filter-grid">
+          <div class="analysis-control-block"><span>조회 기간</span><div id="analysisPeriodTabs" class="mini-tabs"><button data-period="7">7일</button><button class="active" data-period="30">30일</button><button data-period="90">90일</button><button data-period="season">시즌</button><button data-period="all">전체</button><button data-period="custom">직접 설정</button></div></div>
+          <div class="analysis-control-block"><span>보기 단위</span><div id="analysisViewTabs" class="mini-tabs"></div></div>
+        </div>
+        <div id="analysisCustomRange" class="analysis-custom-range" hidden><label>시작일<input id="analysisFrom" type="date" /></label><span>~</span><label>종료일<input id="analysisTo" type="date" /></label></div>
         <div id="sideFilters" class="side-filters"></div>
       </section>
-      <div id="analysisMetrics" class="analysis-metric-grid"></div>
-      <section class="chart-card"><div class="panel-head"><div><p class="section-kicker">TREND</p><h2 id="chartTitle">추이</h2></div><select id="metricSelect" class="metric-select"></select></div><div id="mainChart" class="chart-area"></div></section>
+      <div id="analysisMetrics" class="analysis-overview"></div>
+      <section id="analysisDetail" class="analysis-detail-card"></section>
       <section id="analysisBreakdown" class="breakdown-card"></section>
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">V6.4.0</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">V6.5.0</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge local">로컬</span></div><p id="cloudStatusText" class="settings-copy">이 기기에 저장 중</p><small id="cloudLastSync" class="muted"></small><div id="cloudNotConfigured" class="cloud-box" hidden><b>Supabase 설정 필요</b><p><code>supabase-config.js</code>에 Project URL을 입력하고 <code>migration_v6.sql</code>을 실행하세요.</p></div><div id="cloudLoggedOut" class="cloud-box" hidden><label>이메일<input id="authEmail" type="email" autocomplete="email" /></label><label>비밀번호<input id="authPassword" type="password" autocomplete="current-password" minlength="6" /></label><div class="inline-actions"><button id="signInBtn" class="primary-btn">로그인</button><button id="signUpBtn" class="soft-btn">계정 만들기</button></div></div><div id="cloudLoggedIn" class="cloud-box" hidden><b id="cloudUserEmail"></b><p>로그인은 유지됩니다. 자동 동기화 성공은 팝업 없이 상태만 갱신합니다.</p><div class="inline-actions"><button id="syncNowBtn" class="primary-btn">지금 동기화</button><button id="signOutBtn" class="soft-btn">로그아웃</button></div></div></section>
@@ -96,7 +100,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="supabase-config.js?v=6.4.0"></script>
+<script src="supabase-config.js?v=6.5.0"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -114,6 +118,6 @@ window.clearBaseballTrackerCache=async function(){
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=6.4.0" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=6.5.0" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>

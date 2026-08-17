@@ -1,167 +1,193 @@
-# Baseball Tracker Pro V6.4.0
+# Baseball Tracker Pro V6.5.0
 
-V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성한 버전입니다.
+V6.5.0은 V6.4의 입력·기록 구조를 유지하면서 **분석 엔진과 분석 탭 UI를 전면 개편**한 버전입니다. 새로운 입력 항목은 추가하지 않습니다.
 
-## V6 핵심 구조
+## V6.5.0 핵심 변경
 
-- 하단: **홈 / 입력 / 기록 / 분석 / 설정**
-- 입력: **활동 날짜 → 경기/훈련 → 투구/타격/수비/주루** (항상 한 줄)
-- 경기 = 개별 Event 중심
-  - 투구: Batter Faced(BF) 아래에 매 pitch 저장
-  - 타격: Plate Appearance(PA) 아래에 매 pitch 반응 저장
-  - 수비: 수비 플레이 1개 = event 1개
-  - 주루: 도루 시도 1개 = event 1개
-- 훈련 = Training Set 중심
-  - +1로 세거나 총량을 직접 입력한 뒤 세트 저장
-- 모든 통계는 `activityDate` 기준
-- 실제 입력 시각은 `recordedAt`으로 별도 보존
-- 로컬 저장은 IndexedDB, Supabase는 클라우드 동기화용
+### 분석 화면 구조
+- `경기 성과` / `훈련 · 워크로드` 분리
+- 경기: `투구 / 타격 / 수비 / 주루`
+- 훈련·워크로드: `전체 / 투구 / 타격 / 수비 / 주루`
+- 조회 기간: `7일 / 30일 / 90일 / 시즌 / 전체 / 직접 설정`
+- 보기 단위
+  - 경기: `경기별 / 주간 / 월간 / 연간`
+  - 훈련: `일별 / 주간 / 월간 / 연간`
+- 조회 기간과 보기 단위를 독립적으로 변경 가능
 
-## 먼저 Supabase 업데이트
+### KPI Dashboard
+- 주요 지표를 여러 카드로 동시에 표시
+- 모든 카드에 작은 Sparkline 추이 표시
+- 지표명은 영어/약자를 기본으로 표시
+- 공간이 충분하면 작은 한글 의미 표시
+- 일반 메뉴, 필터, 탭은 한국어 유지
+- Hover 설명 및 별도 용어집 없음
 
-V5 DB를 사용 중이어도 V6 새 테이블이 필요합니다.
+### Metric Detail
+지표 카드를 터치/클릭하면 팝업이 아니라 같은 화면 아래의 상세 영역이 갱신됩니다.
 
-1. Supabase Dashboard → SQL Editor
-2. `migration_v6.sql` 전체 실행
-3. Table Editor에서 아래 테이블 확인
-   - `game_days_v6`
-   - `batter_faced_v6`
-   - `plate_appearances_v6`
-   - `game_events_v6`
-   - `training_sets_v6`
-4. 기존 `athletes`, `events`, `games` 등 V5 테이블은 삭제하지 마세요.
+상세 영역:
+- 지표 영어명 / 짧은 한글 의미
+- 기간 전체 값
+- 최근 구간 값
+- 최대값
+- 지표 설명
+- 계산 정의
+- 큰 추이 그래프
+- 그래프 포인트 선택 상세값
+- 사용된 표본 크기
 
-## Supabase 설정
+### 정확한 기간 집계
+주간/월간/연간 비율은 경기별 퍼센트의 단순 평균을 사용하지 않습니다.
 
-`supabase-config.js`에서 Project URL만 실제 프로젝트 주소로 바꾸세요.
+예: Strike%
+- 경기별 Strike%를 평균내지 않음
+- 해당 기간의 `총 Strikes / 총 Official Pitches`로 다시 계산
 
-```js
-window.BASEBALL_SUPABASE_CONFIG = {
-  url: 'https://YOUR-PROJECT-REF.supabase.co',
-  publishableKey: 'sb_publishable_...'
-};
-```
+AVG, OBP, CSW%, K%, BB%, Contact%, Whiff% 등도 같은 원칙으로 기간 단위에서 다시 계산합니다.
 
-브라우저에는 Publishable key만 사용합니다. Secret/service_role 키를 넣으면 안 됩니다.
+## 추가된 경기 투구 지표
 
-## GitHub Pages 업데이트
+### 투구량
+- Pitches
+- Game TLU
+- BF
 
-ZIP을 풀어 **폴더 안의 파일 전체**를 GitHub repository 최상위에 올립니다.
-`index.html`이 repository root에 바로 보여야 합니다.
+### 제구
+- Strike%
+- 1st Strike%
+- Ball%
+- BB%
+- P/BF
 
-GitHub → Settings → Pages:
+### 위력
+- CSW%
+- SwStr%
+- Called Strike%
+- K%
+- K-BB%
 
-- Source: Deploy from a branch
-- Branch: main
-- Folder: / (root)
+### 투구 결과
+- Foul%
+- In Play%
+- HBP%
 
-## V5 데이터
+### 타구 프로필
+- GB%
+- LD%
+- FB%
+- 타구 방향 좌/중/우 Breakdown
 
-- V6는 같은 브라우저에 남아 있는 V5 localStorage 데이터를 최초 실행 시 V6 IndexedDB 모델로 복사합니다.
-- V5 localStorage 및 V5 Supabase 테이블은 삭제하지 않습니다.
-- 업그레이드할 때는 **V5 기록이 남아 있는 기존 기기에서 V6를 한 번 실행하고 로그인하여 동기화**하는 것을 권장합니다. 그러면 변환된 V6 데이터가 새 V6 클라우드 테이블로 업로드됩니다.
+우투/좌투 및 상대 우타/좌타 필터를 유지합니다.
 
-## 주요 기록 규칙
+`내 투구` TLU에는 해당 방향으로 기록된 공식 투구, 견제, 연습투구, 경기 수비 송구가 포함됩니다. `상대 타자 우/좌` 필터에는 타자에게 실제로 던진 공식 투구만 사용합니다.
 
-### 경기 투구
-- Official pitch: +1 official pitch / +1.00 TLU
-- 견제 정상: +0 official pitch / +0.85 TLU
-- 견제 악송구: +0 official pitch / +0.85 TLU
-- 연습투구: +0 official pitch / +1.00 TLU
-- Strike%: 루킹 + 헛스윙 + 파울 + IN PLAY 포함
+## 추가된 경기 타격 지표
 
-### 타격
-- PA 아래에 `볼 지켜봄 / 스트라이크 지켜봄 / 헛스윙 / 파울 / IN PLAY / HBP`를 구별하여 저장
-- IN PLAY 후 OUT/1B/2B/3B/HR/ROE/SH/SF
-- 타구 형태와 방향은 선택
-- 로그 수정에서 구종/구속/위치/메모를 사후 추가 가능
+### 결과
+- PA
+- H
+- AVG
+- OBP
+- SLG
+- OPS
+- ISO
+- BABIP
 
-### 수비
-- 내야: 정면/포핸드/백핸드/전진 선택 가능
-- 외야: 앞으로/정면/좌우/뒤로 선택 가능
-- 포구 결과와 송구 결과를 별도로 기록
-- 포지션 그룹 입력 없이 포지션에서 내야/외야를 자동 판별
-- 송구 목적지, 정상/악송구, 송구 부하(0.75/0.85/1.00) 기록
-- 병살 기회/결과 및 송구 판단 항목은 사용하지 않음
-- 분석: 목적지별 송구 성공률, 포구 형태 후 송구 성공률
+### 선구 · 컨택
+- P/PA
+- Swing%
+- Whiff%
+- Contact%
+- Called Strike%
+- K%
+- BB%
+- BB/K
 
-### 주루
-- 도루는 베이스 하나 단위 attempt
-- `1B→2B 성공`, 이후 별도 `2B→3B 실패`이면 SB 1 / CS 1
-- 추가 진루 입력은 V6.2부터 제거. SB/CS는 실제 도루 시도만 집계
+### 타구 프로필
+- GB%
+- LD%
+- FB%
+- 타구 방향 좌/중/우 Breakdown
 
-### 훈련
-- 투구: 가벼운 0.75 / 중간 0.85 / 전력 1.00
-- 타격: 우/좌 + 빈스윙/티/토스/BP/머신/라이브 + 선택 구속 + 횟수
-- 수비: 내야/외야 + 훈련 종류 + reps + 실제 송구 수 + 송구 부하
-- 주루: 도루 스타트/리드/베이스러닝/슬라이딩/스프린트 등
+내 우타/좌타 및 상대 우투/좌투 필터를 유지합니다.
 
-## 오프라인
+## 수비 분석
+- Fielding%
+- Throw Accuracy%
+- Chances
+- Throws
+- Throw TLU
+- 내야 포구 형태 Breakdown
+- 외야 접근 Breakdown
+- 송구 목적지별 시도/정상/악송구/성공률
+- 포구 형태 후 송구 성공률
 
-기록은 IndexedDB에 먼저 저장됩니다. 인터넷이 없어도 입력할 수 있고, 로그인 상태에서 인터넷이 복구되면 Supabase로 자동 동기화됩니다.
+## 주루 분석
+- SB
+- CS
+- Attempts
+- SB%
+- 1B→2B / 2B→3B / 3B→HOME 구간별 성공률
 
+## 훈련 · 워크로드 분석
 
-## V6.1 hotfix
-- Fixed startup bug where elements with the HTML `hidden` attribute were still rendered because component CSS declared `display:grid`/`display:flex`.
-- Added `[hidden]{display:none!important}` globally.
-- Bumped the service-worker cache to `baseball-tracker-pro-v6.1.0` so GitHub Pages/PWA clients receive the corrected stylesheet.
+### 전체
+- Total TLU
+- Throws
+- Swings
+- Defense Reps
+- Baserunning
 
+### TLU source
+- 경기 공식투구
+- 견제
+- 경기 연습투구
+- 경기 수비송구
+- 투구 훈련
+- 수비 훈련 송구
 
-## V6.2 changes
-- 경기 투구의 견제/연습투구에 `throwSide`를 저장하고, **내 우투/좌투 Game TLU** 필터에 포함합니다. 상대 타자 우/좌 필터에서는 제외합니다.
-- 경기 수비 송구도 선택한 부하만큼 TLU에 포함되고, 홈의 Game TLU / Total TLU / Total Throws에 반영합니다.
-- 경기 수비의 포지션 그룹 입력과 병살 기회/결과를 제거했습니다.
-- 수비 분석에 **송구 목적지별 시도/정상/악송구/성공률**과 **포구 형태 후 송구 성공률**을 추가했습니다.
-- 경기 주루의 추가 진루 입력/분석을 제거했습니다. 기존 레거시 기록은 삭제하지 않습니다.
-- 타격 분석 버그 수정: V6 이벤트의 canonical domain인 `hitting`과 분석 코드의 `batting` 불일치를 수정했습니다.
-- 타격 차트는 데이터가 없는 날짜를 0으로 연결하지 않고 실제 타석이 있는 날짜만 그립니다. AVG/OBP/SLG/OPS 축도 소수 야구 표기 형태로 표시합니다.
+### 투구 훈련
+- Volume
+- TLU
+- Total TLU
+- Light / Medium / Max
 
-V6/V6.1에서 이미 `migration_v6.sql`을 실행했다면 **V6.2용 추가 SQL은 없습니다.**
+### 타격 훈련
+- 총 스윙량
+- 훈련 종류별 Breakdown
+- 우타/좌타 비중
 
-## V6.4.0 startup/cache reliability fix
+### 수비 훈련
+- 총 Reps
+- 실제 송구 횟수
+- 수비 훈련 TLU
+- 훈련 종류별 Breakdown
+- 내야/외야 비중
 
-V6.4.0 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
+### 주루 훈련
+- 총 Reps
+- 훈련 종류별 Breakdown
 
-Startup now binds the static navigation before IndexedDB loading, applies timeouts to local database initialization, and shows a non-blocking recovery banner if app initialization does not finish. The recovery button unregisters Baseball Tracker service workers, removes only Baseball Tracker PWA caches, and reloads the page. It does not delete IndexedDB baseball records.
+## 데이터 상태
+Pitch 기반 과정 지표는 결과 미상/미완료 상태에서도 이미 입력된 pitch를 활용할 수 있습니다.
 
-No Supabase schema change is required from V6.2 to V6.4.0.
+결과 기반 지표는 정상 완료된 BF/PA만 사용합니다.
 
-## V6.4.0 startup hotfix
-V6.4.0의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 작성되어 ES module 전체가 파싱되지 않는 문제가 있었습니다. V6.4.0에서 수정했고, 실제 브라우저 테스트 하네스에서 앱 초기화와 하단 메뉴 전환까지 검증했습니다. DB 스키마 변경은 없습니다.
+예:
+- Pitch 기반: Strike%, CSW%, Swing%, Whiff%, Contact%
+- 완료 결과 기반: K%, BB%, AVG, OBP, SLG, OPS
 
+## DB / 배포
+- V6.5.0은 Supabase 스키마를 변경하지 않습니다.
+- V6 migration을 이미 실행했다면 추가 SQL 실행이 필요 없습니다.
+- GitHub Pages의 기존 파일을 V6.5.0 파일로 교체하면 됩니다.
+- Service Worker cache key는 `baseball-tracker-pro-v6.5.0`입니다.
 
-## V6.4.0 — BF/PA card editing UX
-- 경기 투구/타격 B/S 카운트 색상 분리: Ball=Green, Strike=Amber.
-- BALL/Strike/IN PLAY/HBP 버튼을 의미별 색상과 고정 위치로 통일.
-- 타자(BF)/타석(PA)을 카드 단위로 묶고 번호 accent를 순환 표시.
-- 완료 카드는 기본 접힘, 현재 기록과 과거 미완료 기록은 기본 펼침.
-- 과거 미완료 BF/PA는 `계속 입력`으로 해당 기록에 다시 진입 가능.
-- 카드 안 각 투구를 눌러 공 종류, IN PLAY 결과, 타구형태/방향, 구종/구속/위치/메모를 한 화면에서 수정.
-- 수정/삭제 후 BF/PA 결과와 B/S 및 분석값은 원본 pitch event에서 재계산.
-- 기록 탭도 동일 BF/PA 카드 컴포넌트를 재사용.
-
-
-## V6.4.0 — BF/PA 결과 미상 · 부모 기록 보존
-
-이번 버전의 핵심은 `완료 / 결과 미상 / 미완료 / 삭제`를 명확히 분리하는 것입니다.
-
-- `? 결과 미상으로 다음 타자/타석`
-  - 현재까지 입력한 pitch는 그대로 보존합니다.
-  - 부모 BF/PA는 `result = "UNKNOWN"`, `completed = false`로 유지합니다.
-  - 다음 BF/PA는 미리 만들지 않고, 다음 첫 pitch를 입력하는 순간 생성합니다.
-- `최종 결과만 입력` 기능은 추가하지 않았습니다.
-- 결과 미상 BF/PA는 자동으로 현재 입력 대상으로 다시 잡히지 않습니다.
-- 결과 미상 카드의 `계속 입력`을 누르면 UNKNOWN 상태를 해제하고 같은 BF/PA에 pitch를 이어서 입력합니다.
-- 개별 pitch를 삭제해도 부모 BF/PA는 자동 삭제하지 않습니다.
-  - 완료 조건이 깨지면 `미완료 기록`으로 다시 계산됩니다.
-  - 모든 pitch를 삭제해도 부모 카드와 좌/우 Context는 남습니다.
-- 부모 카드에서 `타자 기록 삭제 / 타석 기록 삭제`를 명시적으로 눌렀을 때만 부모와 하위 pitch를 함께 soft-delete합니다.
-- 부모 전체 삭제도 5초 Undo가 가능합니다.
-- 삭제된 BF/PA 번호는 재사용하지 않습니다. sequence 번호는 soft-delete 행까지 포함해 계속 증가합니다.
-- 입력 화면의 BF/PA 최근 5개 제한과 일반 입력 8개 제한을 제거했습니다. 선택 날짜의 기록을 모두 표시합니다.
-- 분석에 `완료 / 결과 미상 / 미완료` 상태 수를 추가했습니다.
-- 결과 미상/미완료의 pitch 자체는 투구수, TLU, Strike%, Swing/Whiff/Contact 같은 pitch-level 분석에 남습니다.
-- BF/PA 결과가 필요한 K/BB/AVG/OBP/SLG/OPS에는 완료 부모만 사용합니다.
-- P/BF는 완료 BF에 속한 pitch만 분자로 사용하도록 수정했습니다.
-
-`UNKNOWN`은 기존 `result text` 컬럼을 사용하는 상태값이므로 **Supabase 스키마 추가 변경은 필요하지 않습니다.**
+## 주요 파일
+- `index.html`
+- `styles.css`
+- `js/app.js`
+- `js/analytics.js`
+- `js/storage.js`
+- `sw.js`
+- `migration_v6.sql` — 신규 설치용. 기존 V6 사용자는 재실행 불필요
