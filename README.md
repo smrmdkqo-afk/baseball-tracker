@@ -117,3 +117,11 @@ GitHub → Settings → Pages:
 - 타격 차트는 데이터가 없는 날짜를 0으로 연결하지 않고 실제 타석이 있는 날짜만 그립니다. AVG/OBP/SLG/OPS 축도 소수 야구 표기 형태로 표시합니다.
 
 V6/V6.1에서 이미 `migration_v6.sql`을 실행했다면 **V6.2용 추가 SQL은 없습니다.**
+
+## V6.2.1 startup/cache reliability fix
+
+V6.2.1 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
+
+Startup now binds the static navigation before IndexedDB loading, applies timeouts to local database initialization, and shows a non-blocking recovery banner if app initialization does not finish. The recovery button unregisters Baseball Tracker service workers, removes only Baseball Tracker PWA caches, and reloads the page. It does not delete IndexedDB baseball records.
+
+No Supabase schema change is required from V6.2 to V6.2.1.

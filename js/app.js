@@ -1,11 +1,11 @@
-import {openDB,getAll,getOne,putOne,putMany,deleteOne,getMeta,setMeta,snapshot,replaceSnapshot,ensureInitialData,migrateV5LocalIfNeeded,uuid,iso,todayKey,stamp} from './storage.js';
-import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,seriesByDate,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2} from './analytics.js';
+import {openDB,getAll,getOne,putOne,putMany,deleteOne,getMeta,setMeta,snapshot,replaceSnapshot,ensureInitialData,migrateV5LocalIfNeeded,uuid,iso,todayKey,stamp} from './storage.js?v=6.2.1';
+import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,seriesByDate,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2} from './analytics.js?v=6.2.1';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const storeNames=['athletes','gameDays','batterFaced','plateAppearances','gameEvents','trainingSets'];
 let data={athletes:[],gameDays:[],batterFaced:[],plateAppearances:[],gameEvents:[],trainingSets:[]};
 let ui={view:'home',inputDate:todayKey(),inputMode:'game',domain:'pitching',historyDate:'all',historyMode:'all',historyDomain:'all',analysisSource:'game',analysisPeriod:'30',analysisDate:todayKey(),analysisDomain:'pitching',ownSide:'all',oppSide:'all',pendingBatterSide:null,pendingOwnPitchSide:null,pendingBatSide:null,pendingOppPitcherSide:null,inPlayContext:null,quantity:10};
-let activeAthleteId=null,toastTimer=null,undoTimer=null,lastDeleted=null,deferredInstallPrompt=null,syncTimer=null;
+let activeAthleteId=null,toastTimer=null,undoTimer=null,lastDeleted=null,deferredInstallPrompt=null,syncTimer=null,staticEventsBound=false;
 const cloud={client:null,session:null,configured:false,syncing:false,lastSync:Number(localStorage.getItem('btV6LastSync')||0)};
 
 const LABELS={
@@ -42,10 +42,20 @@ function countBS(events,type='pitching'){
 function lastCompleted(kind,date=ui.inputDate){const list=kind==='bf'?recordsFor('batterFaced'):recordsFor('plateAppearances');return list.filter(x=>x.activityDate===date&&x.completed).sort((a,b)=>b.sequenceNo-a.sequenceNo)[0]||null;}
 function nextSequence(store,date){return Math.max(0,...recordsFor(store).filter(x=>x.activityDate===date).map(x=>Number(x.sequenceNo)||0))+1;}
 
+function withTimeout(promise,ms,label){return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} 시간이 초과되었습니다.`)),ms))]);}
 async function init(){
-  await openDB();await migrateV5LocalIfNeeded();await ensureInitialData();await reloadData();
+  // Bind navigation first so a slow local DB can never leave a completely dead screen.
+  bindStaticEvents();registerPWA();
+  $('#todayLabel').textContent=fmtDate(todayKey());
+  await withTimeout(openDB(),6000,'로컬 데이터베이스 열기');
+  await withTimeout(migrateV5LocalIfNeeded(),12000,'기존 데이터 변환');
+  await withTimeout(ensureInitialData(),6000,'초기 데이터 준비');
+  await withTimeout(reloadData(),8000,'기록 불러오기');
   ui.inputDate=todayKey();ui.analysisDate=todayKey();
-  bindStaticEvents();renderAll();registerPWA();initCloud();
+  renderAll();
+  window.__BT_APP_READY__=true;
+  const boot=$('#bootError');if(boot)boot.hidden=true;
+  initCloud().catch(err=>{console.error('Cloud init failed',err);renderCloudStatus('error','동기화 초기화 실패');});
 }
 
 function setView(v){ui.view=v;$$('.view').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$$('.bottom-nav button').forEach(x=>x.classList.toggle('active',x.dataset.nav===v));const titles={home:'홈',input:'입력',history:'기록',analysis:'분석',settings:'설정'};$('#pageTitle').textContent=titles[v]||'';if(v==='history')renderHistory();if(v==='analysis')renderAnalysis();window.scrollTo({top:0,behavior:'smooth'});}
@@ -199,6 +209,7 @@ function renderSettings(){
 function athleteRow(a,picker=false){return `<div class="athlete-row ${a.id===activeAthleteId?'active':''}"><span class="athlete-avatar">${esc(a.name.slice(0,1))}</span><span class="copy"><b>${esc(a.name)}</b><small>${a.number?`#${esc(a.number)} · `:''}${esc(a.team||'팀 미입력')} · ${sideThrow(a.throws)}/${sideBat(a.bats)}</small></span>${picker?`<button data-pick-athlete="${a.id}">선택</button>`:`<button data-edit-athlete="${a.id}">수정</button>`}</div>`;}
 
 function bindStaticEvents(){
+  if(staticEventsBound)return;staticEventsBound=true;
   $$('.bottom-nav button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.nav)));$$('[data-quick]').forEach(b=>b.addEventListener('click',()=>{ui.inputMode=b.dataset.quick;ui.inputDate=todayKey();setView('input');renderInput();}));
   $('#activityDateInput').addEventListener('change',e=>{ui.inputDate=e.target.value||todayKey();renderInput();});
   $$('#inputModeTabs button').forEach(b=>b.addEventListener('click',()=>{ui.inputMode=b.dataset.mode;renderInput();}));
@@ -362,4 +373,9 @@ async function syncCloud(manual=false){if(cloud.syncing||!cloud.client||!cloud.s
 function registerPWA(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#installMini').style.display='inline-block';});}
 async function promptInstall(){if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;return;}showToast('홈 화면에 추가','브라우저 메뉴의 앱 설치/홈 화면에 추가를 사용하세요.');}
 
-init().catch(err=>{console.error(err);document.body.innerHTML=`<pre style="padding:20px">앱 초기화 실패\n${esc(err.stack||err.message||err)}</pre>`;});
+init().catch(err=>{
+  console.error('App init failed',err);
+  window.__BT_BOOT_ERROR__=err;
+  const box=$('#bootError');if(box){box.hidden=false;const span=box.querySelector('span');if(span)span.textContent=`초기화 오류: ${err.message||err}`;}
+  try{renderCloudStatus('error','초기화 실패');}catch{}
+});

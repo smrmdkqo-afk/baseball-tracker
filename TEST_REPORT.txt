@@ -1,73 +1,25 @@
-Baseball Tracker Pro V6 - Static / Logic Test Report
+Baseball Tracker Pro V6.2.1 - Startup Reliability Checks
+=======================================================
 
-1. JavaScript syntax
-- js/storage.js: PASS (node --check)
-- js/analytics.js: PASS (node --check)
-- js/app.js: PASS (node --check)
+PASS  JavaScript syntax: js/app.js
+PASS  JavaScript syntax: js/analytics.js
+PASS  JavaScript syntax: js/storage.js
+PASS  app.js imports are version-busted (?v=6.2.1)
+PASS  index.html app.js/styles/config URLs are version-busted
+PASS  Service Worker cache namespace is v6.2.1
+PASS  Old Baseball Tracker service-worker cache namespaces are removed on activation
+PASS  [hidden] CSS rule remains enforced
+PASS  Static navigation is bound before IndexedDB migration/load begins
+PASS  IndexedDB startup steps have bounded timeout/error reporting
+PASS  Startup failure no longer replaces the entire page; recovery UI remains clickable
+PASS  Recovery action unregisters service workers and clears PWA Cache Storage only
+PASS  Recovery does NOT clear IndexedDB athlete/game/training records
+PASS  No Supabase schema migration required from V6.2
 
-2. HTML structure
-- ID count: 87
-- Duplicate IDs: 0
-
-3. Core analytics fixture test: PASS
-Fixture included:
-- 4 official pitches + 1 pickoff + 1 warm-up
-- Expected Official Pitches = 4
-- Expected Game TLU = 5.85
-- Expected Strike% = 75%
-- Expected K = 1
-- Batting 1 PA / 1 double
-- SB 1 / CS 1 = 50%
-- Pitching training TLU + defense throwing TLU
-All assertions passed.
-
-4. Feature static assertions: PASS
-Verified code paths for:
-- Game / Training one-row selector
-- Pitching / Hitting / Defense / Baserunning common domains
-- BF / PA parent records
-- batterSide / pitcherSide filters
-- pickoff 0.85 TLU
-- warm-up 1.00 TLU
-- per-pitch batting reactions
-- IF FOREHAND / BACKHAND
-- OF FORWARD / LATERAL / BACK
-- defense DOUBLE_PLAY
-- training defense throwCount and TLU
-- activityDate / recordedAt separation
-- BF/PA completion Toast
-- total_tlu analysis metric
-
-5. Date behavior by construction
-Every V6 game event/training set is written with the selected `activityDate`; `recordedAt` is generated from real input time. Home queries only today's activityDate. Analysis queries the selected date/range.
-
-6. Supabase
-Schema and RLS SQL included. Actual project round-trip cannot be executed without the user's Project URL/session. Run migration_v6.sql before testing cloud sync.
-
-
-V6.1 HOTFIX TEST
-- Global [hidden] CSS rule present: PASS
-- athletePicker/athleteModal/inPlayModal/recordEditModal initial hidden attribute: PASS
-- undoBar initial hidden attribute: PASS
-- service worker cache bumped to baseball-tracker-pro-v6.1.0: PASS
-
-
-V6.2 REGRESSION TEST
-====================
-PASS - batting events stored as domain=hitting are included in battingSummary
-PASS - analysis batting series accepts source=hitting and returns non-zero data
-PASS - game-performance charts skip no-activity dates instead of injecting zero rate values
-PASS - own R/L game pitching TLU includes pickoff and warm-up throws by throwSide
-PASS - opponent batter-side filters exclude pickoff/warm-up because they have no batter matchup
-PASS - defense target analysis computes attempts / good throws / throwing errors / success rate
-PASS - defense fielding-type x throw analysis computes cross-success rate
-PASS - game defense throw TLU is included in workload total
-PASS - baserunning analytics counts steal attempts only; legacy advancement is ignored
-PASS - app.js, analytics.js, storage.js syntax checks
-PASS - no game-defense DP UI bindings or position-group selector remain
-
-Fixture example:
-- R official pitch 1 + pickoff .85 + warm-up 1.00 -> R Game TLU 2.85
-- Filtering vs L batter -> matchup TLU 1.00 (pickoff/warm-up excluded)
-- 1B throws: 2 attempts / 1 normal / 1 error -> 50.0%
-- BACKHAND then throw: 2 attempts / 1 normal / 1 error -> 50.0%
+Notes
+-----
+The reported 'static home screen / every click dead / no sync' condition is consistent
+with the application module not reaching initialization. V6.2 used stable asset URLs,
+which allowed a stale controlling service worker/browser cache to potentially mix
+release assets during deployment. V6.2.1 prevents that class of update failure and
+adds visible recovery if initialization is delayed or fails.

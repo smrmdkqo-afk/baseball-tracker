@@ -1,10 +1,10 @@
-const CACHE='baseball-tracker-pro-v6.2.0';
-const CORE=['./','./index.html','./styles.css','./js/storage.js','./js/analytics.js','./js/app.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./supabase-config.js'];
+const CACHE='baseball-tracker-pro-v6.2.1';
+const CORE=['./','./index.html','./styles.css?v=6.2.1','./js/storage.js?v=6.2.1','./js/analytics.js?v=6.2.1','./js/app.js?v=6.2.1','./manifest.webmanifest?v=6.2.1','./icon-192.png','./icon-512.png','./supabase-config.js?v=6.2.1'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('baseball-tracker-pro-')).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
-  const u=new URL(e.request.url);
-  if(u.origin!==self.location.origin)return;
-  e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r;}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))));
+  const u=new URL(e.request.url);if(u.origin!==self.location.origin)return;
+  // Navigations are network-first. Versioned assets cannot collide with an older release.
+  e.respondWith(fetch(e.request).then(r=>{if(r&&r.ok){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))));
 });
