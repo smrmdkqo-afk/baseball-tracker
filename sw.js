@@ -1,5 +1,5 @@
-const CACHE='baseball-tracker-pro-v6.2.2';
-const CORE=['./','./index.html','./styles.css?v=6.2.2','./js/storage.js?v=6.2.2','./js/analytics.js?v=6.2.2','./js/app.js?v=6.2.2','./manifest.webmanifest?v=6.2.2','./icon-192.png','./icon-512.png','./supabase-config.js?v=6.2.2'];
+const CACHE='baseball-tracker-pro-v6.3.0';
+const CORE=['./','./index.html','./styles.css?v=6.3.0','./js/storage.js?v=6.3.0','./js/analytics.js?v=6.3.0','./js/app.js?v=6.3.0','./manifest.webmanifest?v=6.3.0','./icon-192.png','./icon-512.png','./supabase-config.js?v=6.3.0'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('baseball-tracker-pro-')).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

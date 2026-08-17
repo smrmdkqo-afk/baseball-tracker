@@ -1,4 +1,4 @@
-# Baseball Tracker Pro V6.2
+# Baseball Tracker Pro V6.3.0
 
 V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성한 버전입니다.
 
@@ -118,13 +118,24 @@ GitHub → Settings → Pages:
 
 V6/V6.1에서 이미 `migration_v6.sql`을 실행했다면 **V6.2용 추가 SQL은 없습니다.**
 
-## V6.2.2 startup/cache reliability fix
+## V6.3.0 startup/cache reliability fix
 
-V6.2.2 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
+V6.3.0 adds explicit cache-busting query versions to CSS and JS module URLs. This prevents an older installed PWA service worker from combining old JavaScript with a newly deployed HTML file after a GitHub Pages update.
 
 Startup now binds the static navigation before IndexedDB loading, applies timeouts to local database initialization, and shows a non-blocking recovery banner if app initialization does not finish. The recovery button unregisters Baseball Tracker service workers, removes only Baseball Tracker PWA caches, and reloads the page. It does not delete IndexedDB baseball records.
 
-No Supabase schema change is required from V6.2 to V6.2.2.
+No Supabase schema change is required from V6.2 to V6.3.0.
 
-## V6.2.2 startup hotfix
-V6.2.1의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 작성되어 ES module 전체가 파싱되지 않는 문제가 있었습니다. V6.2.2에서 수정했고, 실제 브라우저 테스트 하네스에서 앱 초기화와 하단 메뉴 전환까지 검증했습니다. DB 스키마 변경은 없습니다.
+## V6.3.0 startup hotfix
+V6.3.0의 수비 분석 라벨 객체에서 `1B/2B/3B` 키가 따옴표 없이 작성되어 ES module 전체가 파싱되지 않는 문제가 있었습니다. V6.3.0에서 수정했고, 실제 브라우저 테스트 하네스에서 앱 초기화와 하단 메뉴 전환까지 검증했습니다. DB 스키마 변경은 없습니다.
+
+
+## V6.3.0 — BF/PA card editing UX
+- 경기 투구/타격 B/S 카운트 색상 분리: Ball=Green, Strike=Amber.
+- BALL/Strike/IN PLAY/HBP 버튼을 의미별 색상과 고정 위치로 통일.
+- 타자(BF)/타석(PA)을 카드 단위로 묶고 번호 accent를 순환 표시.
+- 완료 카드는 기본 접힘, 현재 기록과 과거 미완료 기록은 기본 펼침.
+- 과거 미완료 BF/PA는 `계속 입력`으로 해당 기록에 다시 진입 가능.
+- 카드 안 각 투구를 눌러 공 종류, IN PLAY 결과, 타구형태/방향, 구종/구속/위치/메모를 한 화면에서 수정.
+- 수정/삭제 후 BF/PA 결과와 B/S 및 분석값은 원본 pitch event에서 재계산.
+- 기록 탭도 동일 BF/PA 카드 컴포넌트를 재사용.

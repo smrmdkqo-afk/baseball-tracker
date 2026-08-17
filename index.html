@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Baseball Tracker" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Baseball Tracker Pro V6.2.2</title>
-  <link rel="manifest" href="manifest.webmanifest?v=6.2.2" />
+  <title>Baseball Tracker Pro V6.3.0</title>
+  <link rel="manifest" href="manifest.webmanifest?v=6.3.0" />
   <link rel="icon" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=6.2.2" />
+  <link rel="stylesheet" href="styles.css?v=6.3.0" />
 </head>
 <body>
 <div id="app" class="app-shell">
@@ -70,7 +70,7 @@
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">V6.2.2</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">V6.3.0</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge local">로컬</span></div><p id="cloudStatusText" class="settings-copy">이 기기에 저장 중</p><small id="cloudLastSync" class="muted"></small><div id="cloudNotConfigured" class="cloud-box" hidden><b>Supabase 설정 필요</b><p><code>supabase-config.js</code>에 Project URL을 입력하고 <code>migration_v6.sql</code>을 실행하세요.</p></div><div id="cloudLoggedOut" class="cloud-box" hidden><label>이메일<input id="authEmail" type="email" autocomplete="email" /></label><label>비밀번호<input id="authPassword" type="password" autocomplete="current-password" minlength="6" /></label><div class="inline-actions"><button id="signInBtn" class="primary-btn">로그인</button><button id="signUpBtn" class="soft-btn">계정 만들기</button></div></div><div id="cloudLoggedIn" class="cloud-box" hidden><b id="cloudUserEmail"></b><p>로그인은 유지됩니다. 자동 동기화 성공은 팝업 없이 상태만 갱신합니다.</p><div class="inline-actions"><button id="syncNowBtn" class="primary-btn">지금 동기화</button><button id="signOutBtn" class="soft-btn">로그아웃</button></div></div></section>
@@ -88,12 +88,15 @@
 
 <div id="inPlayModal" class="modal-backdrop" hidden><div class="modal-card compact"><div class="modal-head"><div><p class="section-kicker">IN PLAY</p><h2 id="inPlayTitle">타구 결과</h2></div><button class="icon-btn" data-close="inPlayModal">×</button></div><div class="form-grid"><label>타구 형태<select id="inPlayBallType"><option value="">선택 안 함</option><option value="GB">GB · 땅볼</option><option value="LD">LD · 라인드라이브</option><option value="FB">FB · 뜬공</option></select></label><label>타구 방향<select id="inPlayDirection"><option value="">선택 안 함</option><option value="L">좌</option><option value="C">중</option><option value="R">우</option></select></label></div><div id="inPlayResults" class="result-grid eight"><button data-result="OUT">OUT</button><button data-result="1B">1B</button><button data-result="2B">2B</button><button data-result="3B">3B</button><button data-result="HR">HR</button><button data-result="ROE">ROE</button><button data-result="SH">SH<small>희생번트</small></button><button data-result="SF">SF<small>희생플라이</small></button></div></div></div>
 
+
+<div id="pitchEditModal" class="modal-backdrop sheet-backdrop" hidden><form id="pitchEditForm" class="modal-card bottom-sheet"><div class="modal-head"><div><p class="section-kicker">PITCH EDIT</p><h2 id="pitchEditTitle">투구 수정</h2></div><button class="icon-btn" type="button" data-close="pitchEditModal">×</button></div><input id="pitchEditId" type="hidden" /><input id="pitchEditKind" type="hidden" /><div class="edit-section"><span class="edit-label">이 공의 결과</span><div id="pitchEditTypeButtons" class="pitch-edit-types"></div></div><div id="pitchEditInPlayFields" class="edit-section" hidden><span class="edit-label">IN PLAY 결과</span><div id="pitchEditResultButtons" class="result-grid eight pitch-edit-results"></div><div class="form-grid edit-details"><label>타구 형태<select id="pitchEditBallType"><option value="">미입력</option><option value="GB">GB · 땅볼</option><option value="LD">LD · 라인드라이브</option><option value="FB">FB · 뜬공</option></select></label><label>방향<select id="pitchEditDirection"><option value="">미입력</option><option value="L">좌</option><option value="C">중</option><option value="R">우</option></select></label></div></div><div class="edit-section"><span class="edit-label">영상 분석 상세정보 · 선택</span><div class="form-grid"><label>구종<input id="pitchEditPitchType" placeholder="예: FB / SL" /></label><label>구속 km/h<input id="pitchEditVelocity" type="number" min="0" max="200" /></label><label>위치<input id="pitchEditZone" placeholder="예: 몸쪽 낮음" /></label><label class="span-2">메모<input id="pitchEditNote" /></label></div></div><div class="modal-actions pitch-edit-actions"><button id="deletePitchBtn" type="button" class="danger-ghost">이 공 삭제</button><span></span><button type="button" class="soft-btn" data-close="pitchEditModal">취소</button><button class="primary-btn" type="submit">변경 저장</button></div></form></div>
+
 <div id="recordEditModal" class="modal-backdrop" hidden><form id="recordEditForm" class="modal-card compact"><div class="modal-head"><div><p class="section-kicker">EDIT</p><h2>기록 수정</h2></div><button class="icon-btn" type="button" data-close="recordEditModal">×</button></div><input id="editRecordStore" type="hidden" /><input id="editRecordId" type="hidden" /><div id="recordEditFields" class="form-grid"></div><div class="modal-actions right"><button type="button" class="soft-btn" data-close="recordEditModal">취소</button><button class="primary-btn">저장</button></div></form></div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="supabase-config.js?v=6.2.2"></script>
+<script src="supabase-config.js?v=6.3.0"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -111,6 +114,6 @@ window.clearBaseballTrackerCache=async function(){
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=6.2.2" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=6.3.0" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>

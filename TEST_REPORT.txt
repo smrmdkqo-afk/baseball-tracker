@@ -1,32 +1,80 @@
-Baseball Tracker Pro V6.2.2 - Test Report
-========================================
+Baseball Tracker Pro V6.3.0 - Test Report
+Generated: 2026-08-17
 
-Root cause fixed
-----------------
-V6.2.1 contained an invalid JavaScript object literal in js/app.js:
-  const labels={1B:'1루',2B:'2루',3B:'3루',...}
-Because identifiers cannot start with digits, the ES module failed to parse before init() ran.
-Result: static Home HTML appeared, but navigation/event binding/cloud initialization never started.
+Scope
+- Game Pitching / Game Batting input color redesign
+- BF (Batter Faced) / PA (Plate Appearance) card logs
+- Completed / current / historical-incomplete visual states
+- Per-pitch edit bottom sheet
+- Recalculation after pitch edit/delete
+- History reuse of BF/PA cards
+- PWA version/cache update
 
-Fix
----
-Quoted the base keys:
-  const labels={'1B':'1루','2B':'2루','3B':'3루',...}
-Version/cache bumped to 6.2.2.
+Automated checks passed
+1. JavaScript syntax
+   - js/app.js: PASS (node --check)
+   - js/analytics.js: PASS
+   - js/storage.js: PASS
 
-Validation
-----------
-1. js/storage.js + js/analytics.js import: PASS
-2. js/app.js ES-module parse: PASS (Node reaches runtime environment access rather than SyntaxError)
-3. Browser UI harness with in-memory storage:
-   - application initialization: PASS (__BT_APP_READY__ === true)
-   - Home render: PASS
-   - bottom nav -> Input: PASS
-   - bottom nav -> Analysis: PASS
-   - Analysis empty-state chart render: PASS
-4. Static selector/HTML review: PASS for startup-required elements
-5. Service worker cache version: baseball-tracker-pro-v6.2.2
+2. HTML integrity
+   - Duplicate static HTML IDs: 0
+   - pitchEditModal / pitchEditForm and all edit-field IDs present
+   - [hidden]{display:none!important} safety rule retained
 
-Database
---------
-No Supabase schema change from V6.2/V6.2.1. Do NOT rerun migration_v6.sql solely for this patch.
+3. Version/cache consistency
+   - index.html asset query: v=6.3.0
+   - app.js module imports: v=6.3.0
+   - Service Worker cache: baseball-tracker-pro-v6.3.0
+   - Service Worker core assets: v=6.3.0
+
+4. Pitching analytics fixture
+   Baseline:
+   - BF #1: Called strike -> Foul -> Swinging strike = K
+   - Summary: 3 official pitches / BF 1 / K 1
+   Edit simulation:
+   - Pitch #3 changed from Swinging strike to BALL
+   - Parent recomputed as incomplete
+   - Summary: 3 official pitches / BF 0 / K 0 / Ball 1
+   Result: PASS
+
+5. Batting analytics fixture
+   Baseline:
+   - PA #1 result 2B = PA 1 / H 1 / 2B 1
+   Edit simulation:
+   - IN PLAY result changed 2B -> OUT and PA parent recomputed
+   - Summary: PA 1 / H 0 / OUT 1
+   Result: PASS
+
+6. BF/PA editing structure
+   - Only newest incomplete BF/PA is treated as normal current input.
+   - An older BF/PA made incomplete by a correction is not silently reused for new input.
+   - Historical incomplete card exposes '계속 입력' to explicitly resume it.
+   - When resumed, new pitch events append to that original BF/PA.
+   - If the resumed BF/PA completes, resume context is cleared.
+   Result: PASS (static logic inspection + syntax validation)
+
+7. Data-integrity guard
+   - Editing an earlier pitch so that the BF/PA would terminate before already-existing later pitches is blocked.
+   - User is instructed to edit/delete the later pitches first.
+   Result: PASS (source assertion)
+
+8. UI source assertions
+   - Ball count: Green family
+   - Strike count: Amber family
+   - S display: 1 / 2 only (3rd strike completes BF/PA)
+   - BALL: Green
+   - Called / Swinging / Foul: shared Amber family
+   - IN PLAY: Blue
+   - HBP: Red
+   - Pickoff / warm-up: separate Slate/Navy ARM LOAD panel
+   - Completed BF/PA: collapsed by default
+   - Current BF/PA: expanded, Amber state
+   - Historical incomplete BF/PA: expanded, Orange warning state
+   - BF/PA sequence accent cycles through 3 restrained colors
+   Result: PASS
+
+Notes
+- No Supabase schema change is required from V6.2.2 to V6.3.0.
+- migration_v6.sql does NOT need to be rerun solely for this update.
+- Existing V6 data remains compatible.
+- Full live Supabase round-trip still depends on the user's configured Project URL/account environment.
