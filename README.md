@@ -1,53 +1,98 @@
-# Baseball Tracker Pro V5.2 — Date First
+# Baseball Tracker Pro V6
 
-V5.2는 UI와 날짜 처리 방식을 정리한 버전입니다. DB 스키마는 V5와 동일합니다.
+V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성한 버전입니다.
 
-## 핵심 변경
+## V6 핵심 구조
 
-- 하단 메뉴: **홈 / 입력 / 기록 / 분석 / 설정**
-- 사용자에게 보이는 세션 이름과 세션 생성 UI 제거
-- 입력 화면: **날짜 → 경기/훈련 → 투구/타격/주루/수비** 순서
-- 경기 선택 시: 투구 / 타격 / 주루 / 수비
-- 훈련 선택 시: 투구 / 타격 / 수비
-- 홈은 실제 오늘 날짜의 활동만 표시
-- 분석은 7일 / 30일 / 시즌 / 전체 기간 통계와 TLU 추세 표시
-- 기록은 activityDate 기준으로 날짜별 상세 로그 제공
-- 이벤트 수정 시 활동 날짜 자체를 이동 가능
+- 하단: **홈 / 입력 / 기록 / 분석 / 설정**
+- 입력: **활동 날짜 → 경기/훈련 → 투구/타격/수비/주루** (항상 한 줄)
+- 경기 = 개별 Event 중심
+  - 투구: Batter Faced(BF) 아래에 매 pitch 저장
+  - 타격: Plate Appearance(PA) 아래에 매 pitch 반응 저장
+  - 수비: 수비 플레이 1개 = event 1개
+  - 주루: 도루 시도/추가 진루 1개 = event 1개
+- 훈련 = Training Set 중심
+  - +1로 세거나 총량을 직접 입력한 뒤 세트 저장
+- 모든 통계는 `activityDate` 기준
+- 실제 입력 시각은 `recordedAt`으로 별도 보존
+- 로컬 저장은 IndexedDB, Supabase는 클라우드 동기화용
 
-## 날짜 처리
+## 먼저 Supabase 업데이트
 
-각 이벤트는 두 시간 개념을 분리합니다.
+V5 DB를 사용 중이어도 V6 새 테이블이 필요합니다.
 
-- `metadata.activityDate`: 실제 경기/훈련 날짜. **홈, 기록, 분석의 집계 기준**
-- `occurredAt` / `metadata.recordedAt`: 앱에 실제 입력한 시각. 감사/로그용
+1. Supabase Dashboard → SQL Editor
+2. `migration_v6.sql` 전체 실행
+3. Table Editor에서 아래 테이블 확인
+   - `game_days_v6`
+   - `batter_faced_v6`
+   - `plate_appearances_v6`
+   - `game_events_v6`
+   - `training_sets_v6`
+4. 기존 `athletes`, `events`, `games` 등 V5 테이블은 삭제하지 마세요.
 
-예: 8/17에 8/15 경기 영상을 보며 입력하면 기록은 8/15에 추가되고 8/17 홈 수치는 변하지 않습니다. 8/15가 포함되는 분석 기간에는 소급 반영됩니다.
+## Supabase 설정
 
-## TLU 규칙
+`supabase-config.js`에서 Project URL만 실제 프로젝트 주소로 바꾸세요.
 
-### 경기
-- Official Pitch: +1 official pitch / +1.00 TLU
-- 견제 정상: +0 official pitch / +0.85 TLU
-- 견제 악송구: +0 official pitch / +0.85 TLU
-- 연습투구: +0 official pitch / +1.00 TLU
+```js
+window.BASEBALL_SUPABASE_CONFIG = {
+  url: 'https://YOUR-PROJECT-REF.supabase.co',
+  publishableKey: 'sb_publishable_...'
+};
+```
 
-### 훈련
-- 가벼운: 0.75 TLU
-- 적정(약 80%): 0.85 TLU
-- 전력: 1.00 TLU
-
-## Supabase
-
-V5에서 이미 `migration_v5.sql`을 실행했다면 **V5.2용 새 SQL은 필요 없습니다.** `activityDate`는 기존 `events.metadata` JSON에 저장되므로 DB 컬럼 추가가 없습니다.
-
-V4에서 바로 올리는 경우에는 먼저 `migration_v5.sql`을 실행하세요. 기존 V4 테이블은 삭제하지 않습니다.
+브라우저에는 Publishable key만 사용합니다. Secret/service_role 키를 넣으면 안 됩니다.
 
 ## GitHub Pages 업데이트
 
-1. 이 폴더의 파일을 기존 repository 최상위에 업로드/교체
-2. `supabase-config.js`의 Project URL 확인
-3. Commit
-4. GitHub Pages가 새 버전을 배포한 뒤 브라우저를 새로고침
-5. 설치형 PWA에서 이전 화면이 보이면 앱을 완전히 종료 후 다시 실행
+ZIP을 풀어 **폴더 안의 파일 전체**를 GitHub repository 최상위에 올립니다.
+`index.html`이 repository root에 바로 보여야 합니다.
 
-서비스워커 캐시 버전은 `5.2.0`으로 갱신되어 있습니다.
+GitHub → Settings → Pages:
+
+- Source: Deploy from a branch
+- Branch: main
+- Folder: / (root)
+
+## V5 데이터
+
+- V6는 같은 브라우저에 남아 있는 V5 localStorage 데이터를 최초 실행 시 V6 IndexedDB 모델로 복사합니다.
+- V5 localStorage 및 V5 Supabase 테이블은 삭제하지 않습니다.
+- 업그레이드할 때는 **V5 기록이 남아 있는 기존 기기에서 V6를 한 번 실행하고 로그인하여 동기화**하는 것을 권장합니다. 그러면 변환된 V6 데이터가 새 V6 클라우드 테이블로 업로드됩니다.
+
+## 주요 기록 규칙
+
+### 경기 투구
+- Official pitch: +1 official pitch / +1.00 TLU
+- 견제 정상: +0 official pitch / +0.85 TLU
+- 견제 악송구: +0 official pitch / +0.85 TLU
+- 연습투구: +0 official pitch / +1.00 TLU
+- Strike%: 루킹 + 헛스윙 + 파울 + IN PLAY 포함
+
+### 타격
+- PA 아래에 `볼 지켜봄 / 스트라이크 지켜봄 / 헛스윙 / 파울 / IN PLAY / HBP`를 구별하여 저장
+- IN PLAY 후 OUT/1B/2B/3B/HR/ROE/SH/SF
+- 타구 형태와 방향은 선택
+- 로그 수정에서 구종/구속/위치/메모를 사후 추가 가능
+
+### 수비
+- 내야: 정면/포핸드/백핸드/전진 선택 가능
+- 외야: 앞으로/정면/좌우/뒤로 선택 가능
+- 포구 결과와 송구 결과를 별도로 기록
+- 송구 목적지와 병살 기회/결과 선택 가능
+
+### 주루
+- 도루는 베이스 하나 단위 attempt
+- `1B→2B 성공`, 이후 별도 `2B→3B 실패`이면 SB 1 / CS 1
+- 악송구 등을 보고 추가 진루한 것은 `추가 진루`로 저장하여 SB/CS에서 제외
+
+### 훈련
+- 투구: 가벼운 0.75 / 중간 0.85 / 전력 1.00
+- 타격: 우/좌 + 빈스윙/티/토스/BP/머신/라이브 + 선택 구속 + 횟수
+- 수비: 내야/외야 + 훈련 종류 + reps + 실제 송구 수 + 송구 부하
+- 주루: 도루 스타트/리드/베이스러닝/슬라이딩/스프린트 등
+
+## 오프라인
+
+기록은 IndexedDB에 먼저 저장됩니다. 인터넷이 없어도 입력할 수 있고, 로그인 상태에서 인터넷이 복구되면 Supabase로 자동 동기화됩니다.

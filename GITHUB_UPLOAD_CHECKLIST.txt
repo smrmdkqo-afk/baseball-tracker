@@ -1,13 +1,16 @@
-Baseball Tracker Pro V5.2 GitHub 업데이트 체크리스트
+Baseball Tracker Pro V6 - GitHub Pages 업데이트
 
-1. 기존 Supabase가 V5 스키마라면 SQL 실행 불필요
-2. supabase-config.js의 Project URL 확인
-3. V5.2 폴더 안 파일 전체를 GitHub repository 최상위에 업로드/교체
-4. index.html / app.js / styles.css / sw.js / manifest.webmanifest 교체 확인
-5. Commit changes
-6. GitHub Pages 주소 새로고침
-7. 입력 탭에서 과거 날짜 선택 → 경기 투구 1개 입력 테스트
-8. 홈으로 이동 → 오늘 수치가 변하지 않는지 확인
-9. 기록 탭 → 과거 날짜에 이벤트가 나타나는지 확인
-10. 분석 탭 → 해당 날짜가 포함된 기간 통계가 증가하는지 확인
-11. 휴대폰/태블릿에서 동일 계정 동기화 확인
+[ ] 1. Supabase SQL Editor에서 migration_v6.sql 실행
+[ ] 2. V5 기존 테이블은 삭제하지 않기
+[ ] 3. supabase-config.js의 Project URL 확인
+[ ] 4. ZIP 압축 해제
+[ ] 5. ZIP 자체가 아니라 내부 파일 전체를 GitHub root에 업로드
+[ ] 6. index.html / styles.css / js 폴더 / sw.js가 root에 있는지 확인
+[ ] 7. Commit changes
+[ ] 8. Settings > Pages > main / (root) 확인
+[ ] 9. 기존 V5 기록이 있는 기기에서 V6 페이지를 먼저 열기
+[ ] 10. 로그인 후 '지금 동기화' 1회 실행
+[ ] 11. 경기 > 투구에서 K 완료 Toast 확인
+[ ] 12. 경기 > 타격에서 PA 완료 Toast 확인
+[ ] 13. 과거 날짜 입력 후 홈의 오늘 수치가 안 바뀌는지 확인
+[ ] 14. 휴대폰/태블릿에서 설치 후 오프라인 입력 확인
