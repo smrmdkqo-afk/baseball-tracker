@@ -1,4 +1,4 @@
-# Baseball Tracker Pro V6.1
+# Baseball Tracker Pro V6.2
 
 V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성한 버전입니다.
 
@@ -10,7 +10,7 @@ V6는 V5.2에 화면만 덧붙인 버전이 아니라 기록 모델을 재구성
   - 투구: Batter Faced(BF) 아래에 매 pitch 저장
   - 타격: Plate Appearance(PA) 아래에 매 pitch 반응 저장
   - 수비: 수비 플레이 1개 = event 1개
-  - 주루: 도루 시도/추가 진루 1개 = event 1개
+  - 주루: 도루 시도 1개 = event 1개
 - 훈련 = Training Set 중심
   - +1로 세거나 총량을 직접 입력한 뒤 세트 저장
 - 모든 통계는 `activityDate` 기준
@@ -80,12 +80,15 @@ GitHub → Settings → Pages:
 - 내야: 정면/포핸드/백핸드/전진 선택 가능
 - 외야: 앞으로/정면/좌우/뒤로 선택 가능
 - 포구 결과와 송구 결과를 별도로 기록
-- 송구 목적지와 병살 기회/결과 선택 가능
+- 포지션 그룹 입력 없이 포지션에서 내야/외야를 자동 판별
+- 송구 목적지, 정상/악송구, 송구 부하(0.75/0.85/1.00) 기록
+- 병살 기회/결과 및 송구 판단 항목은 사용하지 않음
+- 분석: 목적지별 송구 성공률, 포구 형태 후 송구 성공률
 
 ### 주루
 - 도루는 베이스 하나 단위 attempt
 - `1B→2B 성공`, 이후 별도 `2B→3B 실패`이면 SB 1 / CS 1
-- 악송구 등을 보고 추가 진루한 것은 `추가 진루`로 저장하여 SB/CS에서 제외
+- 추가 진루 입력은 V6.2부터 제거. SB/CS는 실제 도루 시도만 집계
 
 ### 훈련
 - 투구: 가벼운 0.75 / 중간 0.85 / 전력 1.00
@@ -102,3 +105,15 @@ GitHub → Settings → Pages:
 - Fixed startup bug where elements with the HTML `hidden` attribute were still rendered because component CSS declared `display:grid`/`display:flex`.
 - Added `[hidden]{display:none!important}` globally.
 - Bumped the service-worker cache to `baseball-tracker-pro-v6.1.0` so GitHub Pages/PWA clients receive the corrected stylesheet.
+
+
+## V6.2 changes
+- 경기 투구의 견제/연습투구에 `throwSide`를 저장하고, **내 우투/좌투 Game TLU** 필터에 포함합니다. 상대 타자 우/좌 필터에서는 제외합니다.
+- 경기 수비 송구도 선택한 부하만큼 TLU에 포함되고, 홈의 Game TLU / Total TLU / Total Throws에 반영합니다.
+- 경기 수비의 포지션 그룹 입력과 병살 기회/결과를 제거했습니다.
+- 수비 분석에 **송구 목적지별 시도/정상/악송구/성공률**과 **포구 형태 후 송구 성공률**을 추가했습니다.
+- 경기 주루의 추가 진루 입력/분석을 제거했습니다. 기존 레거시 기록은 삭제하지 않습니다.
+- 타격 분석 버그 수정: V6 이벤트의 canonical domain인 `hitting`과 분석 코드의 `batting` 불일치를 수정했습니다.
+- 타격 차트는 데이터가 없는 날짜를 0으로 연결하지 않고 실제 타석이 있는 날짜만 그립니다. AVG/OBP/SLG/OPS 축도 소수 야구 표기 형태로 표시합니다.
+
+V6/V6.1에서 이미 `migration_v6.sql`을 실행했다면 **V6.2용 추가 SQL은 없습니다.**

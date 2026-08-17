@@ -50,3 +50,24 @@ V6.1 HOTFIX TEST
 - athletePicker/athleteModal/inPlayModal/recordEditModal initial hidden attribute: PASS
 - undoBar initial hidden attribute: PASS
 - service worker cache bumped to baseball-tracker-pro-v6.1.0: PASS
+
+
+V6.2 REGRESSION TEST
+====================
+PASS - batting events stored as domain=hitting are included in battingSummary
+PASS - analysis batting series accepts source=hitting and returns non-zero data
+PASS - game-performance charts skip no-activity dates instead of injecting zero rate values
+PASS - own R/L game pitching TLU includes pickoff and warm-up throws by throwSide
+PASS - opponent batter-side filters exclude pickoff/warm-up because they have no batter matchup
+PASS - defense target analysis computes attempts / good throws / throwing errors / success rate
+PASS - defense fielding-type x throw analysis computes cross-success rate
+PASS - game defense throw TLU is included in workload total
+PASS - baserunning analytics counts steal attempts only; legacy advancement is ignored
+PASS - app.js, analytics.js, storage.js syntax checks
+PASS - no game-defense DP UI bindings or position-group selector remain
+
+Fixture example:
+- R official pitch 1 + pickoff .85 + warm-up 1.00 -> R Game TLU 2.85
+- Filtering vs L batter -> matchup TLU 1.00 (pickoff/warm-up excluded)
+- 1B throws: 2 attempts / 1 normal / 1 error -> 50.0%
+- BACKHAND then throw: 2 attempts / 1 normal / 1 error -> 50.0%
