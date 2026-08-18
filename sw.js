@@ -1,5 +1,5 @@
-const CACHE='baseball-diary-v6.5.2';
-const CORE=['./','./index.html','./styles.css?v=6.5.2','./js/storage.js?v=6.5.2','./js/analytics.js?v=6.5.2','./js/app.js?v=6.5.2','./manifest.webmanifest?v=6.5.2','./icon-192.png','./icon-512.png','./supabase-config.js?v=6.5.2'];
+const CACHE='baseball-diary-v7.0.0';
+const CORE=['./','./index.html','./styles.css?v=7.0.0','./js/storage.js?v=7.0.0','./js/analytics.js?v=7.0.0','./js/app.js?v=7.0.0','./manifest.webmanifest?v=7.0.0','./icon-192.png','./icon-512.png','./vendor/supabase-2.112.3.min.js?v=7.0.0','./supabase-config.js?v=7.0.0'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&(k.startsWith('baseball-tracker-pro-')||k.startsWith('baseball-diary-'))).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

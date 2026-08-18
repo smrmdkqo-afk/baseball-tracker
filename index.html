@@ -8,13 +8,45 @@
   <meta name="apple-mobile-web-app-title" content="야구일기" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>야구일기 · 나의 야구 기록장</title>
-  <link rel="manifest" href="manifest.webmanifest?v=6.5.2" />
+  <link rel="manifest" href="manifest.webmanifest?v=7.0.0" />
   <link rel="icon" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=6.5.2" />
+  <link rel="stylesheet" href="styles.css?v=7.0.0" />
 </head>
 <body>
-<div id="app" class="app-shell">
+<section id="authGate" class="auth-gate" aria-live="polite">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="brand-mark"><img src="icon-192.png" alt="" /></div><div><p>한 공 한 공, 나의 야구를 기록하다</p><h1>야구일기</h1></div></div>
+    <div id="authLoadingPanel" class="auth-panel"><span class="auth-spinner" aria-hidden="true"></span><h2>계정을 확인하고 있습니다</h2><p>로그인 상태와 이 기기의 계정 전용 기록을 안전하게 확인합니다.</p></div>
+    <form id="authLoginPanel" class="auth-panel" hidden>
+      <p class="section-kicker">INVITE ONLY</p><h2>로그인이 필요합니다</h2><p>초대받은 계정만 야구일기를 사용할 수 있습니다. 한 번 로그인하면 이 기기에서 로그인 상태가 유지됩니다.</p>
+      <label>이메일<input id="authEmail" type="email" autocomplete="email" required /></label>
+      <label>비밀번호<input id="authPassword" type="password" autocomplete="current-password" minlength="6" required /></label>
+      <p id="authMessage" class="auth-message" hidden></p>
+      <button id="signInBtn" class="primary-btn full" type="submit">로그인</button>
+      <button id="forgotPasswordBtn" class="auth-link" type="button">비밀번호를 잊으셨나요?</button>
+      <small>계정 만들기는 제공하지 않습니다. 관리자가 이메일로 초대한 사용자만 로그인할 수 있습니다.</small>
+    </form>
+    <form id="authPasswordPanel" class="auth-panel" hidden>
+      <p class="section-kicker">ACCOUNT SETUP</p><h2 id="passwordPanelTitle">비밀번호를 설정하세요</h2><p id="passwordPanelCopy">초대받은 계정에서 사용할 새 비밀번호를 입력하세요.</p>
+      <label>새 비밀번호<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+      <label>새 비밀번호 확인<input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+      <p id="passwordMessage" class="auth-message" hidden></p>
+      <button id="setPasswordBtn" class="primary-btn full" type="submit">비밀번호 저장하고 시작</button>
+    </form>
+    <div id="authConfigPanel" class="auth-panel" hidden><p class="section-kicker">SETUP REQUIRED</p><h2>Supabase 연결 설정이 필요합니다</h2><p><code>supabase-config.js</code>의 Project URL과 Publishable key를 확인하세요. 로그인 필수 버전에서는 연결 설정 전 기록 화면을 열지 않습니다.</p></div>
+    <div id="legacyMigrationPanel" class="auth-panel" hidden>
+      <p class="section-kicker">EXISTING RECORDS</p><h2>이 기기에서 기존 기록을 찾았습니다</h2><p>아래 기록을 현재 로그인한 계정 전용 저장공간으로 가져올까요? 원본은 확인이 끝날 때까지 삭제하지 않습니다.</p>
+      <div class="migration-summary"><div><span>선수</span><b id="migrationAthletes">0명</b></div><div><span>경기</span><b id="migrationGames">0일</b></div><div><span>경기 이벤트</span><b id="migrationEvents">0건</b></div><div><span>훈련 세트</span><b id="migrationTraining">0건</b></div></div>
+      <p id="migrationRange" class="migration-range"></p>
+      <p id="migrationIsolationNote" class="auth-message success" hidden>이 기기에 다른 계정 기록도 있지만, 현재 계정과 관계가 확인된 기록만 분리해 표시했습니다. 다른 계정 기록은 읽거나 이전하지 않습니다.</p>
+      <div class="auth-actions"><button id="skipMigrationBtn" class="soft-btn" type="button">지금은 건너뛰기</button><button id="importLegacyBtn" class="primary-btn" type="button">내 계정으로 이전</button></div>
+    </div>
+    <p class="auth-foot">서버와 기기 모두 계정별로 분리됩니다. 다른 계정으로 로그인해도 이전 사용자의 기록은 표시되지 않습니다.</p>
+  </div>
+</section>
+
+<div id="app" class="app-shell" hidden>
   <header class="topbar">
     <div class="brand-block"><div class="brand-mark" aria-hidden="true"><img src="icon-192.png" alt="" /></div><div><h1>야구일기</h1><small id="pageTitle" class="brand-page-label">오늘의 기록</small></div></div>
     <button id="athleteSwitcher" class="athlete-switcher" type="button"><span id="athleteInitial" class="athlete-avatar">P</span><span><small>ATHLETE</small><b id="activeAthleteName">선수 1</b></span><i>⌄</i></button>
@@ -74,11 +106,11 @@
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V6.5.2</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.0.0</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
-        <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge local">로컬</span></div><p id="cloudStatusText" class="settings-copy">이 기기에 저장 중</p><small id="cloudLastSync" class="muted"></small><div id="cloudNotConfigured" class="cloud-box" hidden><b>Supabase 설정 필요</b><p><code>supabase-config.js</code>에 Project URL을 입력하고 <code>migration_v6.sql</code>을 실행하세요.</p></div><div id="cloudLoggedOut" class="cloud-box" hidden><label>이메일<input id="authEmail" type="email" autocomplete="email" /></label><label>비밀번호<input id="authPassword" type="password" autocomplete="current-password" minlength="6" /></label><div class="inline-actions"><button id="signInBtn" class="primary-btn">로그인</button><button id="signUpBtn" class="soft-btn">계정 만들기</button></div></div><div id="cloudLoggedIn" class="cloud-box" hidden><b id="cloudUserEmail"></b><p>로그인은 유지됩니다. 자동 동기화 성공은 팝업 없이 상태만 갱신합니다.</p><div class="inline-actions"><button id="syncNowBtn" class="primary-btn">지금 동기화</button><button id="signOutBtn" class="soft-btn">로그아웃</button></div></div></section>
-        <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">DATA</p><h2>데이터 관리</h2></div></div><div class="stack-actions"><button id="exportData" class="soft-btn full">JSON 백업 내보내기</button><label class="soft-btn full file-label">JSON 백업 불러오기<input id="importData" type="file" accept="application/json" hidden /></label></div></section>
+        <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge synced">동기화됨</span></div><div id="cloudLoggedIn" class="cloud-box"><b id="cloudUserEmail"></b><p id="cloudStatusText">계정 전용 저장공간을 사용 중입니다.</p><small id="cloudPendingCount" class="muted"></small><small id="cloudLastSync" class="muted"></small><div class="inline-actions"><button id="syncNowBtn" class="primary-btn">지금 동기화</button><button id="signOutBtn" class="soft-btn">로그아웃</button></div><button id="signOutClearBtn" class="danger-ghost full" type="button">로그아웃하고 이 기기 캐시 삭제</button></div></section>
+        <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">DATA</p><h2>데이터 관리</h2></div></div><div class="stack-actions"><button id="exportData" class="soft-btn full">현재 계정 JSON 백업</button><label class="soft-btn full file-label">현재 계정 백업 불러오기<input id="importData" type="file" accept="application/json" hidden /></label><button id="checkLegacyDataBtn" class="soft-btn full" type="button">기존 기기 기록 다시 확인</button></div><p class="settings-copy compact-copy">다른 계정의 백업은 열 수 없습니다. 계정 삭제와 서버 데이터 삭제는 관리자에게 요청하세요.</p></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">APP</p><h2>앱 설치</h2></div></div><p id="installHint" class="settings-copy">휴대폰·태블릿 홈 화면에 설치할 수 있습니다.</p><button id="installApp" class="soft-btn full">이 기기에 앱 설치</button></section>
       </div>
     </section>
@@ -97,10 +129,13 @@
 
 <div id="recordEditModal" class="modal-backdrop" hidden><form id="recordEditForm" class="modal-card compact"><div class="modal-head"><div><p class="section-kicker">EDIT</p><h2>기록 수정</h2></div><button class="icon-btn" type="button" data-close="recordEditModal">×</button></div><input id="editRecordStore" type="hidden" /><input id="editRecordId" type="hidden" /><div id="recordEditFields" class="form-grid"></div><div class="modal-actions right"><button type="button" class="soft-btn" data-close="recordEditModal">취소</button><button class="primary-btn">저장</button></div></form></div>
 
+<div id="restorePreviewModal" class="modal-backdrop" hidden><div class="modal-card compact"><div class="modal-head"><div><p class="section-kicker">BACKUP RESTORE</p><h2>백업 내용을 확인하세요</h2></div><button class="icon-btn" type="button" data-close="restorePreviewModal">×</button></div><p id="restoreAccountText" class="settings-copy"></p><div class="migration-summary restore-summary"><div><span>선수</span><b id="restoreAthletes">0명</b></div><div><span>경기</span><b id="restoreGames">0일</b></div><div><span>경기 이벤트</span><b id="restoreEvents">0건</b></div><div><span>훈련 세트</span><b id="restoreTraining">0건</b></div></div><p id="restoreRange" class="migration-range"></p><div class="restore-explain"><p><b>병합</b> 백업 기록을 현재 기록에 합칩니다.</p><p><b>전체 교체</b> 복원 전 자동 백업을 내려받은 뒤 현재 계정의 로컬 기록을 교체합니다.</p></div><div class="modal-actions right"><button class="soft-btn" type="button" data-close="restorePreviewModal">취소</button><button id="mergeBackupBtn" class="soft-btn" type="button">병합</button><button id="replaceBackupBtn" class="danger-ghost" type="button">전체 교체</button></div></div></div>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="supabase-config.js?v=6.5.2"></script>
+<script src="vendor/supabase-2.112.3.min.js?v=7.0.0"></script>
+<script src="supabase-config.js?v=7.0.0"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -118,6 +153,6 @@ window.clearBaseballTrackerCache=async function(){
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=6.5.2" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=7.0.0" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>

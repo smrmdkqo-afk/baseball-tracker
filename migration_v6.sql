@@ -141,7 +141,8 @@ end $$;
 grant select,insert,update,delete on public.athletes,public.game_days_v6,public.batter_faced_v6,public.plate_appearances_v6,public.game_events_v6,public.training_sets_v6 to authenticated;
 revoke all on public.game_days_v6,public.batter_faced_v6,public.plate_appearances_v6,public.game_events_v6,public.training_sets_v6 from anon;
 
--- V5 테이블은 의도적으로 유지합니다. V6 앱은 같은 브라우저의 V5 로컬 데이터를 최초 실행 시 IndexedDB V6 모델로 복사합니다.
--- 복사 후 V6 데이터가 Supabase V6 테이블로 동기화되므로 기존 테이블을 삭제할 필요가 없습니다.
+-- V5 테이블은 의도적으로 유지합니다.
+-- V7 앱은 로그인 뒤 기존 로컬 기록을 발견하면 사용자 확인을 받은 경우에만 UID 전용 IndexedDB로 복사합니다.
+-- 신규 설치 후에는 migration_v7.sql도 이어서 실행해 계정 관계 무결성과 권한을 보강하세요.
 
 notify pgrst,'reload schema';
