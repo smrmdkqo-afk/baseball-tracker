@@ -1,12 +1,12 @@
 {
-  "name": "Baseball Tracker Pro V6.5",
-  "short_name": "Baseball Tracker",
-  "description": "선수 중심 경기 이벤트·훈련량·TLU·좌우 매치업 분석을 위한 야구 트래커",
+  "name": "야구일기",
+  "short_name": "야구일기",
+  "description": "한 공 한 공, 나의 야구를 차곡차곡 기록하는 야구일기",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f7fa",
-  "theme_color": "#0b1f33",
+  "background_color": "#112A5B",
+  "theme_color": "#112A5B",
   "icons": [
     {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
     {"src":"icon-512.png","sizes":"512x512","type":"image/png"}

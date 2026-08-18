@@ -1,7 +1,7 @@
-const CACHE='baseball-tracker-pro-v6.5.1';
-const CORE=['./','./index.html','./styles.css?v=6.5.1','./js/storage.js?v=6.5.1','./js/analytics.js?v=6.5.1','./js/app.js?v=6.5.1','./manifest.webmanifest?v=6.5.1','./icon-192.png','./icon-512.png','./supabase-config.js?v=6.5.1'];
+const CACHE='baseball-diary-v6.5.2';
+const CORE=['./','./index.html','./styles.css?v=6.5.2','./js/storage.js?v=6.5.2','./js/analytics.js?v=6.5.2','./js/app.js?v=6.5.2','./manifest.webmanifest?v=6.5.2','./icon-192.png','./icon-512.png','./supabase-config.js?v=6.5.2'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('baseball-tracker-pro-')).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&(k.startsWith('baseball-tracker-pro-')||k.startsWith('baseball-diary-'))).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
   const u=new URL(e.request.url);if(u.origin!==self.location.origin)return;

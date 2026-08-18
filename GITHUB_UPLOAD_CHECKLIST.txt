@@ -1,8 +1,8 @@
-Baseball Tracker Pro V6.5.1 - GitHub Pages 업데이트
+야구일기 V6.5.2 - GitHub Pages 업데이트
 
 [ ] 1. ZIP 압축 해제
-[ ] 2. 기존 GitHub Pages 파일을 V6.5.1 파일로 전체 교체
-[ ] 3. VERSION 파일이 6.5.1인지 확인
+[ ] 2. 기존 GitHub Pages 파일을 V6.5.2 파일로 전체 교체
+[ ] 3. VERSION 파일이 6.5.2인지 확인
 [ ] 4. Commit / Push
 [ ] 5. GitHub Pages 배포 완료 후 앱을 완전히 다시 열기
 [ ] 6. 홈의 Official Pitches / Strike% 확인
@@ -14,8 +14,8 @@ Baseball Tracker Pro V6.5.1 - GitHub Pages 업데이트
 
 DB:
 - V6 migration을 이미 실행했다면 추가 SQL 실행 필요 없음.
-- V6.5.0 -> V6.5.1 업데이트에서 DB schema 변경 없음.
+- V6.5.1 -> V6.5.2 업데이트에서 DB schema 변경 없음.
 - 기존 orphan row는 자동 삭제하지 않습니다.
 
 PWA cache:
-- V6.5.1 Service Worker가 활성화되면 이전 baseball-tracker-pro-* cache를 자동 삭제합니다.
+- V6.5.2 Service Worker가 활성화되면 이전 baseball-tracker-pro-* 및 baseball-diary-* cache를 자동 삭제합니다.

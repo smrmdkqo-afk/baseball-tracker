@@ -1,4 +1,4 @@
-Baseball Tracker Pro V6.5.1 - Test Report
+야구일기 V6.5.2 - Test Report
 Date: 2026-08-17
 
 Scope
@@ -58,10 +58,10 @@ PASS - invalid rows are only ignored by canonical display/statistics paths
 PASS - internal console diagnostic reports invalid row counts after startup, backup restore, and cloud sync
 
 7. PWA version consistency
-PASS - index.html assets use v=6.5.1
-PASS - app.js imports use v=6.5.1
-PASS - Service Worker cache = baseball-tracker-pro-v6.5.1
-PASS - VERSION = 6.5.1
+PASS - index.html assets use v=6.5.2
+PASS - app.js imports use v=6.5.2
+PASS - Service Worker cache = baseball-diary-v6.5.2
+PASS - VERSION = 6.5.2
 
 8. Database compatibility
 PASS - no Supabase schema change

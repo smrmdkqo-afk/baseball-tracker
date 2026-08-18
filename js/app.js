@@ -1,5 +1,5 @@
-import {openDB,getAll,getOne,putOne,putMany,deleteOne,getMeta,setMeta,snapshot,replaceSnapshot,ensureInitialData,migrateV5LocalIfNeeded,uuid,iso,todayKey,stamp} from './storage.js?v=6.5.1';
-import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,analysisSnapshot,analysisMetricValue,analysisSeries,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2,canonicalGameEvents,gameEventIntegrity} from './analytics.js?v=6.5.1';
+import {openDB,getAll,getOne,putOne,putMany,deleteOne,getMeta,setMeta,snapshot,replaceSnapshot,ensureInitialData,migrateV5LocalIfNeeded,uuid,iso,todayKey,stamp} from './storage.js?v=6.5.2';
+import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,analysisSnapshot,analysisMetricValue,analysisSeries,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2,canonicalGameEvents,gameEventIntegrity} from './analytics.js?v=6.5.2';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const storeNames=['athletes','gameDays','batterFaced','plateAppearances','gameEvents','trainingSets'];
@@ -32,7 +32,7 @@ async function reloadData(){for(const s of storeNames)refreshDataStore(s,await g
 function markLocal(obj){return stamp(obj,{dirty:true});}
 async function save(store,obj,{render=true,sync=true}={}){markLocal(obj);await putOne(store,obj);const i=data[store].findIndex(x=>x.id===obj.id);if(i>=0)data[store][i]=obj;else data[store].push(obj);if(render)renderAll();if(sync)scheduleSync();return obj;}
 function recordsFor(store){if(store==='gameEvents')return canonicalGameEvents(data,{athleteId:activeAthleteId});return active(data[store]).filter(x=>x.athleteId===activeAthleteId);}
-function logIntegrity(context='runtime'){if(!activeAthleteId)return;const q=gameEventIntegrity(data,{athleteId:activeAthleteId});if(q.total)console.warn(`[Baseball Tracker] ${context}: 분석/기록에서 제외된 비정상 game event ${q.total}건 (orphan pitching ${q.orphanPitching}, orphan hitting ${q.orphanHitting})`,q.invalid);}
+function logIntegrity(context='runtime'){if(!activeAthleteId)return;const q=gameEventIntegrity(data,{athleteId:activeAthleteId});if(q.total)console.warn(`[야구일기] ${context}: 분석/기록에서 제외된 비정상 game event ${q.total}건 (orphan pitching ${q.orphanPitching}, orphan hitting ${q.orphanHitting})`,q.invalid);}
 function getGameDay(date=ui.inputDate){return recordsFor('gameDays').find(x=>x.activityDate===date);}
 async function ensureGameDay(date=ui.inputDate){let x=getGameDay(date);if(x)return x;x={id:uuid(),athleteId:activeAthleteId,activityDate:date,ownerId:cloud.session?.user?.id||null,deletedAt:null,createdAt:iso(),updatedAt:iso(),clientUpdatedAt:Date.now(),dirty:true};await save('gameDays',x,{render:false});return x;}
 function isUnknownParent(p){return !!p&&!p.completed&&p.result===UNKNOWN_RESULT;}
@@ -67,7 +67,7 @@ async function init(){
   initCloud().catch(err=>{console.error('Cloud init failed',err);renderCloudStatus('error','동기화 초기화 실패');});
 }
 
-function setView(v){ui.view=v;$$('.view').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$$('.bottom-nav button').forEach(x=>x.classList.toggle('active',x.dataset.nav===v));const titles={home:'홈',input:'입력',history:'기록',analysis:'분석',settings:'설정'};$('#pageTitle').textContent=titles[v]||'';if(v==='history')renderHistory();if(v==='analysis')renderAnalysis();window.scrollTo({top:0,behavior:'smooth'});}
+function setView(v){ui.view=v;$$('.view').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$$('.bottom-nav button').forEach(x=>x.classList.toggle('active',x.dataset.nav===v));const titles={home:'오늘의 기록',input:'한 공 기록하기',history:'차곡차곡 기록',analysis:'성장 보기',settings:'야구일기 설정'};$('#pageTitle').textContent=titles[v]||'';if(v==='history')renderHistory();if(v==='analysis')renderAnalysis();window.scrollTo({top:0,behavior:'smooth'});}
 function renderAll(){renderHeader();renderHome();renderInput();renderHistory();if(ui.view==='analysis')renderAnalysis();renderSettings();}
 function renderHeader(){const a=athlete();$('#activeAthleteName').textContent=a?.name||'선수';$('#athleteInitial').textContent=(a?.name||'P').slice(0,1);$('#todayLabel').textContent=fmtDate(todayKey());}
 function showToast(title,message='',type=''){const el=$('#toast');el.className=`toast show ${type}`;el.innerHTML=`<b>${esc(title)}</b>${message?`<span>${esc(message)}</span>`:''}`;if(type==='complete'){const panel=$('.entry-panel');panel?.classList.add('completion-flash');setTimeout(()=>panel?.classList.remove('completion-flash'),360);}clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1200);}
@@ -602,7 +602,7 @@ async function saveEditedRecord(e){e.preventDefault();const store=$('#editRecord
   if(oldDate!==rec.activityDate&&['batterFaced','plateAppearances'].includes(store)){const gd=await ensureGameDay(rec.activityDate);for(const child of data.gameEvents.filter(x=>x.parentId===rec.id&&!x.deletedAt)){child.activityDate=rec.activityDate;child.gameDayId=gd.id;await save('gameEvents',child,{render:false});}}
   hideModal('recordEditModal');renderAll();showToast('기록 수정 완료');}
 
-async function exportBackup(){const out=await snapshot();out.exportedAt=iso();out.version=6;const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`baseball-tracker-v6-${todayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+async function exportBackup(){const out=await snapshot();out.exportedAt=iso();out.version=6;const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`야구일기-${todayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 async function importBackup(e){const f=e.target.files?.[0];if(!f)return;try{const raw=JSON.parse(await f.text());if(Number(raw.version||0)!==6&&!raw.athletes)throw new Error('V6 백업 형식이 아닙니다.');if(!confirm('현재 로컬 데이터를 백업 파일로 교체할까요?'))return;await replaceSnapshot(raw);await reloadData();logIntegrity('backup restore');renderAll();showToast('백업 복원 완료');}catch(err){console.error(err);showToast('백업 복원 실패',err.message||'파일을 확인하세요.');}finally{e.target.value='';}}
 
 function cloudConfig(){const c=window.BASEBALL_SUPABASE_CONFIG||{},url=String(c.url||''),key=String(c.publishableKey||'');return {url,key,valid:url.startsWith('https://')&&!url.includes('YOUR-PROJECT')&&key.startsWith('sb_publishable_')};}

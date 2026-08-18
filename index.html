@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1f33" />
+  <meta name="theme-color" content="#112A5B" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Baseball Tracker" />
+  <meta name="apple-mobile-web-app-title" content="야구일기" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Baseball Tracker Pro V6.5.1</title>
-  <link rel="manifest" href="manifest.webmanifest?v=6.5.1" />
+  <title>야구일기 · 나의 야구 기록장</title>
+  <link rel="manifest" href="manifest.webmanifest?v=6.5.2" />
   <link rel="icon" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=6.5.1" />
+  <link rel="stylesheet" href="styles.css?v=6.5.2" />
 </head>
 <body>
 <div id="app" class="app-shell">
   <header class="topbar">
-    <div class="brand-block"><div class="brand-mark">BT</div><div><small>BASEBALL TRACKER PRO</small><h1 id="pageTitle">홈</h1></div></div>
+    <div class="brand-block"><div class="brand-mark" aria-hidden="true"><img src="icon-192.png" alt="" /></div><div><h1>야구일기</h1><small id="pageTitle" class="brand-page-label">오늘의 기록</small></div></div>
     <button id="athleteSwitcher" class="athlete-switcher" type="button"><span id="athleteInitial" class="athlete-avatar">P</span><span><small>ATHLETE</small><b id="activeAthleteName">선수 1</b></span><i>⌄</i></button>
     <div class="topbar-actions"><button id="cloudPill" class="cloud-pill local" type="button">로컬</button><button id="installMini" class="install-mini" type="button">앱 설치</button><span id="todayLabel" class="date-pill"></span></div>
   </header>
@@ -74,7 +74,7 @@
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">V6.5.1</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V6.5.2</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge local">로컬</span></div><p id="cloudStatusText" class="settings-copy">이 기기에 저장 중</p><small id="cloudLastSync" class="muted"></small><div id="cloudNotConfigured" class="cloud-box" hidden><b>Supabase 설정 필요</b><p><code>supabase-config.js</code>에 Project URL을 입력하고 <code>migration_v6.sql</code>을 실행하세요.</p></div><div id="cloudLoggedOut" class="cloud-box" hidden><label>이메일<input id="authEmail" type="email" autocomplete="email" /></label><label>비밀번호<input id="authPassword" type="password" autocomplete="current-password" minlength="6" /></label><div class="inline-actions"><button id="signInBtn" class="primary-btn">로그인</button><button id="signUpBtn" class="soft-btn">계정 만들기</button></div></div><div id="cloudLoggedIn" class="cloud-box" hidden><b id="cloudUserEmail"></b><p>로그인은 유지됩니다. 자동 동기화 성공은 팝업 없이 상태만 갱신합니다.</p><div class="inline-actions"><button id="syncNowBtn" class="primary-btn">지금 동기화</button><button id="signOutBtn" class="soft-btn">로그아웃</button></div></div></section>
@@ -100,7 +100,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="supabase-config.js?v=6.5.1"></script>
+<script src="supabase-config.js?v=6.5.2"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -113,11 +113,11 @@ setTimeout(function(){
 },4500);
 window.clearBaseballTrackerCache=async function(){
   try{ if('serviceWorker' in navigator){ var regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(function(r){return r.unregister();})); } }catch(e){}
-  try{ if('caches' in window){ var keys=await caches.keys(); await Promise.all(keys.filter(function(k){return k.indexOf('baseball-tracker-pro-')===0;}).map(function(k){return caches.delete(k);})); } }catch(e){}
+  try{ if('caches' in window){ var keys=await caches.keys(); await Promise.all(keys.filter(function(k){return k.indexOf('baseball-tracker-pro-')===0||k.indexOf('baseball-diary-')===0;}).map(function(k){return caches.delete(k);})); } }catch(e){}
   location.reload();
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=6.5.1" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=6.5.2" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>
