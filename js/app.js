@@ -1,12 +1,13 @@
-import {configureAccountDB,closeDB,deleteAccountDatabase,getAll,putOne,putMany,getMeta,setMeta,snapshot,replaceSnapshot,mergeSnapshot,ensureInitialData,inspectLegacyData,snapshotOwnerIds,previewSnapshot,uuid,iso,todayKey,stamp} from './storage.js?v=7.0.0';
-import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,analysisSnapshot,analysisMetricValue,analysisSeries,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2,canonicalGameEvents,gameEventIntegrity} from './analytics.js?v=7.0.0';
+import {configureAccountDB,closeDB,deleteAccountDatabase,getAll,putOne,putMany,getMeta,setMeta,snapshot,replaceSnapshot,mergeSnapshot,ensureInitialData,inspectLegacyData,snapshotOwnerIds,previewSnapshot,uuid,iso,todayKey,stamp} from './storage.js?v=7.1.0';
+import {gamePitchingSummary,battingSummary,defenseSummary,baserunningSummary,trainingSummary,workloadSummary,todaySummary,totalTLU,analysisSnapshot,analysisMetricValue,analysisSeries,localDate,dateShift,OFFICIAL_PITCH_TYPES,STRIKE_PITCH_TYPES,GAME_TLU,round2,canonicalGameEvents,gameEventIntegrity} from './analytics.js?v=7.1.0';
+import {anchoredAnalysisRange,activityDateNavigation,activityDatesInRange} from './analysis-scope.js?v=7.1.0';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const storeNames=['athletes','gameDays','batterFaced','plateAppearances','gameEvents','trainingSets'];
 let data={athletes:[],gameDays:[],batterFaced:[],plateAppearances:[],gameEvents:[],trainingSets:[]};
-let ui={view:'home',inputDate:todayKey(),inputMode:'game',domain:'pitching',historyDate:'all',historyMode:'all',historyDomain:'all',analysisSource:'game',analysisPeriod:'30',analysisFrom:dateShift(todayKey(),-29),analysisTo:todayKey(),analysisView:'game',analysisDomain:'pitching',analysisMetric:'strikePct',ownSide:'all',oppSide:'all',pendingBatterSide:null,pendingOwnPitchSide:null,pendingBatSide:null,pendingOppPitcherSide:null,inPlayContext:null,quantity:10};
+let ui={view:'home',inputDate:todayKey(),inputMode:'game',domain:'pitching',historyDate:'all',historyMode:'all',historyDomain:'all',analysisSource:'game',analysisAnchor:todayKey(),analysisPeriod:'1',analysisView:'game',analysisDomain:'pitching',analysisMetric:'strikePct',ownSide:'all',oppSide:'all',pendingBatterSide:null,pendingOwnPitchSide:null,pendingBatSide:null,pendingOppPitcherSide:null,inPlayContext:null,quantity:10};
 let activeAthleteId=null,toastTimer=null,undoTimer=null,lastDeleted=null,deferredInstallPrompt=null,syncTimer=null,staticEventsBound=false,pendingRestore=null;
-let expandedBF=new Set(),expandedPA=new Set(),resumeContext=null,pitchEditId=null,pitchEditType=null,pitchEditResult=null,analysisDetailSeries=[];
+let expandedBF=new Set(),expandedPA=new Set(),resumeContext=null,pitchEditId=null,pitchEditType=null,pitchEditResult=null,analysisDetailSeries=[],analysisConditionsInitialized=false;
 const cloud={client:null,session:null,configured:false,syncing:false,syncPromise:null,lastSync:0,lastError:null,localOnlyCount:0,accountUid:null,activation:0,authLinkType:null,activationPromise:null};
 
 const LABELS={
@@ -55,7 +56,7 @@ function nextSequence(store,date){return Math.max(0,...data[store].filter(x=>x.a
 async function init(){
   bindStaticEvents();registerPWA();
   $('#todayLabel').textContent=fmtDate(todayKey());
-  ui.inputDate=todayKey();ui.analysisTo=todayKey();ui.analysisFrom=dateShift(todayKey(),-29);
+  ui.inputDate=todayKey();ui.analysisAnchor=todayKey();ui.analysisPeriod='1';
   window.__BT_APP_READY__=true;
   const boot=$('#bootError');if(boot)boot.hidden=true;
   await initCloud();
@@ -112,8 +113,8 @@ function renderInputSummary(){
 function perfRows(rows){return rows.map(([k,v])=>`<div class="perf-row"><span>${k}</span><b>${v}</b></div>`).join('');}
 function trainingUnitLabel(d){return d==='pitching'?'THROWS':d==='hitting'?'SWINGS':'REPS';}
 function trainingBreakdownHtml(s){const entries=Object.entries(s.byType).sort((a,b)=>b[1]-a[1]).slice(0,8);return entries.length?entries.map(([k,v])=>`<div class="perf-row"><span>${esc(LABELS[k]||k)}</span><b>${v}</b></div>`).join(''):'<div class="prev-result"><span>아직 기록 없음</span><b>오른쪽에서 훈련 세트를 추가하세요.</b></div>';}
-function sideButtonsPitching(bf){const a=athlete();const own=bf?.pitcherSide||ui.pendingOwnPitchSide||(a?.throws==='S'?null:a?.throws);const opp=bf?.batterSide||ui.pendingBatterSide;return `<div class="field-group"><span>내 투구</span><div class="side-context">${sideBtn('pitcher','R','우투',own)}${sideBtn('pitcher','L','좌투',own)}</div></div><div class="field-group"><span>현재 상대 타자</span><div class="side-context">${sideBtn('batter','', '? 미입력',opp)}${sideBtn('batter','R','우타',opp)}${sideBtn('batter','L','좌타',opp)}</div></div>`;}
-function sideButtonsBatting(pa){const a=athlete();const own=pa?.batterSide||ui.pendingBatSide||(a?.bats==='S'?null:a?.bats);const opp=pa?.pitcherSide||ui.pendingOppPitcherSide;return `<div class="field-group"><span>내 타격</span><div class="side-context">${sideBtn('bat','R','우타',own)}${sideBtn('bat','L','좌타',own)}</div></div><div class="field-group"><span>현재 상대 투수</span><div class="side-context">${sideBtn('oppPitcher','', '? 미입력',opp)}${sideBtn('oppPitcher','R','우투',opp)}${sideBtn('oppPitcher','L','좌투',opp)}</div></div>`;}
+function sideButtonsPitching(bf){const a=athlete();const own=bf?.pitcherSide||ui.pendingOwnPitchSide||(a?.throws==='S'?null:a?.throws);const opp=bf?.batterSide||ui.pendingBatterSide;return `<section class="matchup-context" aria-label="현재 투구 대결 조건"><div class="matchup-context-head"><span>현재 대결 조건</span><small>새 기록에 함께 저장됩니다</small></div><div class="field-group"><span>내 투구</span><div class="side-context">${sideBtn('pitcher','R','우투',own)}${sideBtn('pitcher','L','좌투',own)}</div></div><div class="field-group"><span>상대 타자</span><div class="side-context">${sideBtn('batter','','미입력',opp)}${sideBtn('batter','R','우타',opp)}${sideBtn('batter','L','좌타',opp)}</div></div></section>`;}
+function sideButtonsBatting(pa){const a=athlete(),prev=lastParent('pa');const own=pa?.batterSide||ui.pendingBatSide||(a?.bats==='S'?null:a?.bats);const opp=pa?.pitcherSide??ui.pendingOppPitcherSide??prev?.pitcherSide??null;return `<section class="matchup-context" aria-label="현재 타격 대결 조건"><div class="matchup-context-head"><span>현재 대결 조건</span><small>새 기록에 함께 저장됩니다</small></div><div class="field-group"><span>내 타격</span><div class="side-context">${sideBtn('bat','R','우타',own)}${sideBtn('bat','L','좌타',own)}</div></div><div class="field-group"><span>상대 투수</span><div class="side-context">${sideBtn('oppPitcher','','미입력',opp)}${sideBtn('oppPitcher','R','우투',opp)}${sideBtn('oppPitcher','L','좌투',opp)}</div></div></section>`;}
 function sideBtn(kind,val,label,current){return `<button type="button" data-side-kind="${kind}" data-side-value="${val}" class="${(current||'')===val?'active':''}">${label}</button>`;}
 
 function renderInputForm(){const el=$('#inputForm');if(ui.inputMode==='game'){if(ui.domain==='pitching')el.innerHTML=gamePitchingForm();else if(ui.domain==='hitting')el.innerHTML=gameBattingForm();else if(ui.domain==='defense')el.innerHTML=gameDefenseForm();else el.innerHTML=gameBaserunningForm();}else{el.innerHTML=trainingForm(ui.domain);}bindDynamicFormEvents();}
@@ -121,7 +122,7 @@ function countDisplay(bs){return `<div class="count-balls"><span class="count-la
 function gamePitchingForm(){const bf=inputBF(),bs=bf?countBS(bfEvents(bf.id),'pitching'):{b:0,s:0},resuming=!!(resumeContext?.kind==='bf'&&bf?.id===resumeContext.id);return `<div class="entry-title"><div><p class="section-kicker">OFFICIAL PITCH</p><h2>PITCHING</h2><p>${resuming?`타자 #${bf.sequenceNo} 기록을 이어서 입력 중입니다.`:'타자에게 던진 공은 1구 = 1.00 TLU'}</p></div><span class="microcopy ${resuming?'editing-copy':''}">${bf?`타자 #${bf.sequenceNo}${resuming?' · 수정 중':''}`:'새 타자'}</span></div>${countDisplay(bs)}<button class="pitch-main ball-action press-action" data-pitch="ball"><b>BALL</b><span>Official pitch +1</span></button><div class="strike-grid"><button class="action-btn strike press-action" data-pitch="called"><b>루킹</b><span>CALLED</span></button><button class="action-btn strike press-action" data-pitch="swinging"><b>헛스윙</b><span>SWINGING</span></button><button class="action-btn strike press-action" data-pitch="foul"><b>파울</b><span>FOUL</span></button></div><div class="terminal-grid"><button class="action-btn inplay press-action" data-pitch="inplay"><b>IN PLAY</b><span>결과 선택</span></button><button class="action-btn hbp press-action" data-pitch="hbp"><b>HBP</b><span>타자 종료</span></button></div>${bf?`<button type="button" class="unknown-next-btn" data-close-parent-unknown="bf:${bf.id}"><b>? 결과 미상으로 다음 타자</b><span>현재까지 입력한 투구는 보존됩니다.</span></button>`:''}<div class="arm-load-panel"><div class="section-divider"><span>ARM LOAD · 타자 상대 투구와 별도</span></div><div class="load-actions"><button class="press-action" data-game-throw="pickoff_normal"><b>견제 정상</b><span>+0.85 TLU</span></button><button class="press-action" data-game-throw="pickoff_error"><b>견제 악송구</b><span>+0.85 TLU</span></button><button class="press-action" data-game-throw="game_warmup"><b>연습투구</b><span>+1.00 TLU</span></button></div></div>`;}
 function gameBattingForm(){const pa=inputPA(),bs=pa?countBS(paEvents(pa.id),'batting'):{b:0,s:0},resuming=!!(resumeContext?.kind==='pa'&&pa?.id===resumeContext.id);return `<div class="entry-title"><div><p class="section-kicker">PLATE APPEARANCE</p><h2>BATTING</h2><p>${resuming?`타석 #${pa.sequenceNo} 기록을 이어서 입력 중입니다.`:'매 구 반응은 빠르게 기록하고 영상에서 세부정보를 보완할 수 있습니다.'}</p></div><span class="microcopy ${resuming?'editing-copy':''}">${pa?`타석 #${pa.sequenceNo}${resuming?' · 수정 중':''}`:'새 타석'}</span></div>${countDisplay(bs)}<button class="pitch-main ball-action press-action" data-bat-pitch="taken_ball"><b>볼 지켜봄</b><span>TAKEN BALL</span></button><div class="strike-grid"><button class="action-btn strike press-action" data-bat-pitch="taken_strike"><b>스트라이크 지켜봄</b><span>CALLED</span></button><button class="action-btn strike press-action" data-bat-pitch="swinging_strike"><b>헛스윙</b><span>WHIFF</span></button><button class="action-btn strike press-action" data-bat-pitch="foul"><b>파울</b><span>FOUL</span></button></div><div class="terminal-grid"><button class="action-btn inplay press-action" data-bat-pitch="in_play"><b>IN PLAY</b><span>결과 선택</span></button><button class="action-btn hbp press-action" data-bat-pitch="hbp"><b>HBP</b><span>타석 종료</span></button></div>${pa?`<button type="button" class="unknown-next-btn" data-close-parent-unknown="pa:${pa.id}"><b>? 결과 미상으로 다음 타석</b><span>현재까지 입력한 투구 반응은 보존됩니다.</span></button>`:''}`;}
 function gameDefenseForm(){return `<div class="entry-title"><div><p class="section-kicker">DEFENSIVE PLAY</p><h2>DEFENSE</h2><p>포구 결과와 송구 품질을 빠르게 기록합니다. 포구 형태는 포지션에 따라 자동으로 바뀝니다.</p></div></div><div class="form-grid"><label>포지션<select id="defPosition"><option>SS</option><option>2B</option><option>3B</option><option>1B</option><option>C</option><option>P</option><option>LF</option><option>CF</option><option>RF</option></select></label><label>타구<select id="defBall"><option value="GB">GB · 땅볼</option><option value="LD">LD · 라인드라이브</option><option value="FB">FB · 뜬공</option><option value="BUNT">번트</option></select></label><label>포구 결과<select id="defFieldResult"><option value="success">성공</option><option value="unstable">불안정</option><option value="failed">실패</option></select></label></div><div class="field-group"><span>포구 형태 (선택)</span><div id="defFieldType" class="chip-grid"></div></div><div class="form-grid"><label>송구<select id="defThrowResult"><option value="none">없음</option><option value="success">정상 송구</option><option value="error">악송구</option></select></label><label>송구 목적지<select id="defThrowTarget"><option value="">선택 안 함</option><option value="1B">1루</option><option value="2B">2루</option><option value="3B">3루</option><option value="HOME">홈</option><option value="RELAY">중계</option></select></label><label>송구 부하<select id="defThrowTLU"><option value="0.75">가벼움 · 0.75</option><option value="0.85" selected>중간 · 0.85</option><option value="1">전력 · 1.00</option></select></label></div><p class="microcopy">송구 없음이면 TLU는 추가되지 않습니다. 정상 송구는 상대 포구 실책과 관계없이 받을 수 있는 위치에 보낸 송구를 뜻합니다.</p><button id="saveDefense" class="save-set">수비 플레이 저장</button>`;}
-function gameBaserunningForm(){return `<div class="entry-title"><div><p class="section-kicker">BASERUNNING EVENT</p><h2>BASERUNNING</h2><p>도루는 한 베이스 단위 시도로만 기록합니다.</p></div></div><div class="form-grid" style="margin-top:14px"><label>출발<select id="runFrom"><option value="1B">1루</option><option value="2B">2루</option><option value="3B">3루</option></select></label><label>목표<select id="runTo"><option value="2B">2루</option><option value="3B">3루</option><option value="HOME">홈</option></select></label></div><div id="stealResultGroup" class="field-group"><span>결과</span><div class="chip-grid"><button type="button" class="active" data-steal-result="SUCCESS">성공</button><button type="button" data-steal-result="FAILED">실패</button></div></div><button id="saveBaserunning" class="save-set">도루 기록 저장</button>`;}
+function gameBaserunningForm(){return `<div class="entry-title"><div><p class="section-kicker">BASERUNNING EVENT</p><h2>BASERUNNING</h2><p>도루는 한 베이스 단위 시도로만 기록합니다.</p></div></div><div class="form-grid baserunning-route-grid"><label>출발<select id="runFrom"><option value="1B">1루</option><option value="2B">2루</option><option value="3B">3루</option></select></label><label>목표<select id="runTo"><option value="2B">2루</option><option value="3B">3루</option><option value="HOME">홈</option></select></label></div><div id="stealResultGroup" class="field-group steal-result-group"><span>결과</span><div class="steal-result-grid"><button type="button" class="active success" data-steal-result="SUCCESS"><i aria-hidden="true">✓</i><b>성공</b></button><button type="button" class="failed" data-steal-result="FAILED"><i aria-hidden="true">×</i><b>실패</b></button></div></div><button id="saveBaserunning" class="save-set">도루 기록 저장</button>`;}
 function trainingForm(domain){if(domain==='pitching')return trainingPitchingForm();if(domain==='hitting')return trainingHittingForm();if(domain==='defense')return trainingDefenseForm();return trainingBaserunningForm();}
 function quantityHtml(value=ui.quantity){return `<div class="quantity-box"><div class="quantity-main"><button type="button" data-qty-delta="-1">−</button><input id="trainingQty" type="number" min="0" step="1" value="${value}" /><button type="button" data-qty-delta="1">＋</button></div><div class="quantity-quick"><button type="button" data-qty-delta="5">+5</button><button type="button" data-qty-delta="10">+10</button><button type="button" data-qty-set="0">초기화</button></div></div>`;}
 function trainingPitchingForm(){const a=athlete(),side=a?.throws==='S'?'R':a?.throws||'R';return `<div class="entry-title"><div><p class="section-kicker">THROWING VOLUME</p><h2>투구 훈련</h2><p>훈련 명칭보다 실제 투구 강도와 총량을 기록합니다.</p></div></div><div class="form-grid"><label>투구 방향<select id="trPitchSide"><option value="R" ${side==='R'?'selected':''}>우투</option><option value="L" ${side==='L'?'selected':''}>좌투</option></select></label><label>강도<select id="trPitchIntensity"><option value="light">가벼운 · 0.75 TLU</option><option value="medium">중간 · 0.85 TLU</option><option value="max">전력 · 1.00 TLU</option></select></label></div><div class="field-group"><span>투구 횟수</span>${quantityHtml()}</div><button class="save-set" data-save-training="pitching">훈련 세트 저장</button>`;}
@@ -211,18 +212,23 @@ function renderHistory(){
   }
   $('#historyCount').textContent=`${grand} records`;$('#historyList').innerHTML=html||'<div class="scope-note">조건에 맞는 기록이 없습니다.</div>';
 }
+function analysisNavigationDates(){
+  const rows=ui.analysisSource==='game'?[...recordsFor('gameDays'),...recordsFor('gameEvents'),...recordsFor('batterFaced'),...recordsFor('plateAppearances')]:recordsFor('trainingSets');
+  return [...new Set(rows.map(x=>x.activityDate).filter(Boolean))].sort();
+}
 function analysisRange(){
-  const today=todayKey();
-  if(ui.analysisPeriod==='7')return {from:dateShift(today,-6),to:today,label:'최근 7일'};
-  if(ui.analysisPeriod==='30')return {from:dateShift(today,-29),to:today,label:'최근 30일'};
-  if(ui.analysisPeriod==='90')return {from:dateShift(today,-89),to:today,label:'최근 90일'};
-  if(ui.analysisPeriod==='season')return {from:`${today.slice(0,4)}-01-01`,to:`${today.slice(0,4)}-12-31`,label:`${today.slice(0,4)} 시즌`};
-  if(ui.analysisPeriod==='custom'){
-    let from=ui.analysisFrom||dateShift(today,-29),to=ui.analysisTo||today;if(from>to)[from,to]=[to,from];
-    return {from,to,label:`${fmtDate(from)} ~ ${fmtDate(to)}`};
-  }
-  const dates=[...recordsFor('gameEvents'),...recordsFor('trainingSets'),...recordsFor('batterFaced'),...recordsFor('plateAppearances'),...recordsFor('gameDays')].map(x=>x.activityDate).filter(Boolean).sort();
-  return {from:dates[0]||today,to:dates.at(-1)||today,label:'전체'};
+  const anchor=ui.analysisAnchor||todayKey();
+  return anchoredAnalysisRange({anchor,period:ui.analysisPeriod,activityDates:analysisNavigationDates()});
+}
+function analysisScopeCount(range){
+  const dates=activityDatesInRange(analysisNavigationDates(),range);
+  return {days:dates.length,label:ui.analysisSource==='game'?`경기일 ${dates.length}일`:`훈련일 ${dates.length}일`};
+}
+function analysisDateNavigation(){
+  return activityDateNavigation(ui.analysisAnchor||todayKey(),analysisNavigationDates());
+}
+function moveAnalysisAnchor(direction){
+  const nav=analysisDateNavigation(),target=direction<0?nav.previous:nav.next;if(!target)return;ui.analysisAnchor=target;renderAnalysis();
 }
 
 const ANALYSIS_METRICS={
@@ -344,22 +350,61 @@ function sparklineSvg(series){
   return `<svg class="metric-spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${path}"/><circle cx="${pts.at(-1).x}" cy="${pts.at(-1).y}" r="3"/></svg>`;
 }
 function metricCardHtml(id,snapshot,range){
-  const cfg=metricConfig(id),value=analysisMetricValue(snapshot,id),series=analysisSeries(data,{...analysisOpts(range),metric:id,viewUnit:ui.analysisView}),selected=id===ui.analysisMetric;
-  return `<button type="button" class="analysis-metric-card ${selected?'selected':''}" data-analysis-metric="${esc(id)}"><span class="metric-name">${esc(cfg.name)}</span><b>${formatMetricValue(value,cfg)}</b>${cfg.ko?`<small>${esc(cfg.ko)}</small>`:''}${sparklineSvg(series)}</button>`;
+  const cfg=metricConfig(id),value=analysisMetricValue(snapshot,id),single=ui.analysisPeriod==='1',series=single?[]:analysisSeries(data,{...analysisOpts(range),metric:id,viewUnit:ui.analysisView}),selected=id===ui.analysisMetric;
+  return `<button type="button" class="analysis-metric-card ${selected?'selected':''}" data-analysis-metric="${esc(id)}"><span class="metric-name">${esc(cfg.name)}</span><b>${formatMetricValue(value,cfg)}</b>${cfg.ko?`<small>${esc(cfg.ko)}</small>`:''}${single?'<span class="metric-day-label">선택일 상세</span>':sparklineSvg(series)}</button>`;
+}
+function analysisSnapshotHasData(snapshot){
+  if(!snapshot)return false;const s=snapshot.summary;
+  if(snapshot.source==='training'){
+    if((s.sets?.length||0)>0)return true;
+    return ['all','pitching'].includes(snapshot.domain)&&Number(snapshot.workload?.total)>0;
+  }
+  if(snapshot.domain==='pitching')return (s.events?.length||0)>0||s.bf+s.unknownBF+s.incompleteBF>0;
+  if(snapshot.domain==='hitting')return (s.events?.length||0)>0||s.PA+s.unknownPA+s.incompletePA>0;
+  if(snapshot.domain==='defense')return s.plays>0;
+  return s.attempts>0;
+}
+function analysisDateSnapshot(date){
+  return analysisSnapshot(data,{athleteId:activeAthleteId,source:ui.analysisSource,domain:ui.analysisDomain,date,ownSide:ui.ownSide==='all'?null:ui.ownSide,oppSide:ui.oppSide==='all'?null:ui.oppSide});
+}
+function dailyMetricComparison(id){
+  const dates=analysisNavigationDates().filter(date=>date<ui.analysisAnchor).reverse(),points=[];
+  for(const date of dates){const snapshot=analysisDateSnapshot(date);if(!analysisSnapshotHasData(snapshot))continue;const value=analysisMetricValue(snapshot,id);if(value==null||!Number.isFinite(Number(value)))continue;points.push({date,value:Number(value),snapshot});if(points.length===5)break;}
+  return {previous:points[0]||null,recent:points,average:points.length?points.reduce((sum,p)=>sum+p.value,0)/points.length:null};
+}
+function analysisConditionText(){
+  const values=[];
+  if(ui.ownSide!=='all')values.push(ui.analysisDomain==='hitting'?`내 ${ui.ownSide==='R'?'우타':'좌타'}`:`내 ${ui.ownSide==='R'?'우투':'좌투'}`);
+  if(ui.oppSide!=='all')values.push(ui.analysisDomain==='pitching'?(ui.oppSide==='R'?'우타 상대':'좌타 상대'):(ui.oppSide==='R'?'우투 상대':'좌투 상대'));
+  return values.length?values.join(' · '):'전체 조건';
+}
+function renderAnalysisScope(range){
+  const nav=analysisDateNavigation(),anchor=ui.analysisAnchor||todayKey(),isToday=anchor===todayKey(),sourceWord=ui.analysisSource==='game'?'경기':'훈련';
+  $('#analysisAnchorDate').value=anchor;$('#analysisAnchorBadge').textContent=isToday?'오늘':nav.hasRecord?'기록일':'선택일';
+  $('#analysisAnchorBadge').classList.toggle('muted-badge',!isToday&&!nav.hasRecord);
+  const dayCount=ui.analysisSource==='game'?Math.max(recordsFor('gameDays').filter(x=>x.activityDate===anchor).length,nav.hasRecord?1:0):recordsFor('trainingSets').filter(x=>x.activityDate===anchor).length;
+  $('#analysisAnchorMeta').textContent=dayCount?(ui.analysisSource==='game'?`${dayCount}경기 기록`:`${dayCount}세트 기록`):`${sourceWord} 기록 없음`;
+  const prev=$('#analysisPrevDate'),next=$('#analysisNextDate');prev.disabled=!nav.previous;next.disabled=!nav.next;prev.setAttribute('aria-label',`이전 ${sourceWord}`);next.setAttribute('aria-label',`다음 ${sourceWord}`);
+  prev.querySelector('b').textContent=`이전 ${sourceWord}`;next.querySelector('b').textContent=`다음 ${sourceWord}`;
+  const count=analysisScopeCount(range),dateText=range.from===range.to?fmtDate(range.to):`${fmtDate(range.from)}–${fmtDate(range.to)}`;
+  $('#analysisScopeSummary').innerHTML=`<span aria-hidden="true">◷</span><b>${esc(dateText)}</b><small>${esc(range.label)} · ${esc(count.label)}</small>`;
 }
 function renderAnalysisControls(){
   $$('#analysisSourceTabs button').forEach(b=>b.classList.toggle('active',b.dataset.analysisSource===ui.analysisSource));
   $$('#analysisPeriodTabs button').forEach(b=>b.classList.toggle('active',b.dataset.period===ui.analysisPeriod));
-  const custom=ui.analysisPeriod==='custom';$('#analysisCustomRange').hidden=!custom;$('#analysisFrom').value=ui.analysisFrom||'';$('#analysisTo').value=ui.analysisTo||'';
   const allBtn=$('#analysisDomainTabs [data-analysis-domain="all"]');allBtn.hidden=ui.analysisSource!=='training';
   if(ui.analysisSource==='game'&&ui.analysisDomain==='all')ui.analysisDomain='pitching';
   $$('#analysisDomainTabs button').forEach(b=>b.classList.toggle('active',b.dataset.analysisDomain===ui.analysisDomain));
-  $('#analysisViewTabs').innerHTML=analysisViewOptions().map(([v,l])=>`<button type="button" data-analysis-view="${v}" class="${v===ui.analysisView?'active':''}">${l}</button>`).join('');
+  $('#analysisViewTabs').innerHTML=analysisViewOptions().map(([v,l])=>`<button type="button" data-analysis-view="${v}" class="${v===ui.analysisView?'active':''}">${l}</button>`).join('');$('#analysisViewSelect').innerHTML=analysisViewOptions().map(([v,l])=>`<option value="${v}" ${v===ui.analysisView?'selected':''}>${l}</option>`).join('');
+  $('#analysisViewBlock').hidden=ui.analysisPeriod==='1';
   renderSideFilters();
 }
 function renderAnalysis(){
-  const a=athlete();if(!a)return;renderAnalysisControls();const r=analysisRange(),snapshot=analysisSnapshot(data,{...analysisOpts(r)}),groups=analysisMetricGroups(snapshot);ensureAnalysisState(groups);renderAnalysisControls();
-  $('#analysisMetrics').innerHTML=groups.map(g=>`<section class="metric-group"><div class="metric-group-head"><h3>${esc(g.title)}</h3><span>${esc(r.label)} · ${esc(analysisViewOptions().find(x=>x[0]===ui.analysisView)?.[1]||'')}</span></div><div class="analysis-metric-grid">${g.ids.map(id=>metricCardHtml(id,snapshot,r)).join('')}</div></section>`).join('');
+  const a=athlete();if(!a)return;renderAnalysisControls();const r=analysisRange(),snapshot=analysisSnapshot(data,{...analysisOpts(r)}),groups=analysisMetricGroups(snapshot);ensureAnalysisState(groups);renderAnalysisControls();renderAnalysisScope(r);
+  const hasData=analysisSnapshotHasData(snapshot),detail=$('#analysisDetail'),breakdown=$('#analysisBreakdown');
+  if(!hasData){const subject=ui.analysisSource==='game'?DOMAIN_LABEL[ui.analysisDomain]||'경기':'훈련',emptyScope=r.from===r.to?fmtDate(r.to):`${fmtDate(r.from)}–${fmtDate(r.to)}`;$('#analysisMetrics').innerHTML=`<section class="analysis-empty-state"><span aria-hidden="true">⌁</span><h3>${esc(emptyScope)} ${esc(subject)} 기록이 없습니다</h3><p>기준일을 이동하거나 조회 기간을 늘려보세요.</p></section>`;detail.hidden=true;breakdown.hidden=true;return;}
+  detail.hidden=false;breakdown.hidden=false;const viewSuffix=ui.analysisPeriod==='1'?'선택일 상세':analysisViewOptions().find(x=>x[0]===ui.analysisView)?.[1]||'';
+  $('#analysisMetrics').innerHTML=groups.map(g=>`<section class="metric-group"><div class="metric-group-head"><h3>${esc(g.title)}</h3><span>${esc(r.label)} · ${esc(viewSuffix)}</span></div><div class="analysis-metric-grid">${g.ids.map(id=>metricCardHtml(id,snapshot,r)).join('')}</div></section>`).join('');
   renderAnalysisDetail(snapshot,r);renderAnalysisBreakdown(snapshot,r);
 }
 function metricSample(snapshot){
@@ -372,7 +417,13 @@ function metricSample(snapshot){
   const s=snapshot.summary;return `${s.sets.length} Sets · ${n2(snapshot.workload.total)} Total TLU`;
 }
 function renderAnalysisDetail(snapshot,range){
-  const id=ui.analysisMetric,cfg=metricConfig(id),value=analysisMetricValue(snapshot,id),series=analysisSeries(data,{...analysisOpts(range),metric:id,viewUnit:ui.analysisView});analysisDetailSeries=series;
+  const id=ui.analysisMetric,cfg=metricConfig(id),value=analysisMetricValue(snapshot,id);
+  if(ui.analysisPeriod==='1'){
+    const comparison=dailyMetricComparison(id),previousLabel=ui.analysisSource==='game'?'직전 경기':'직전 훈련',averageLabel=ui.analysisSource==='game'?'최근 5경기 평균':'최근 5훈련일 평균';analysisDetailSeries=[];
+    $('#analysisDetail').innerHTML=`<div class="detail-head"><div><span class="detail-eyebrow">선택 날짜 · ${esc(fmtDate(ui.analysisAnchor))}</span><h2>${esc(cfg.name)} <strong>${formatMetricValue(value,cfg)}</strong></h2><p class="metric-full-name">${esc(cfg.full)}${cfg.ko?` · ${esc(cfg.ko)}`:''}</p></div><div class="detail-stat-strip daily-stat-strip"><div><span>선택일</span><b>${formatMetricValue(value,cfg)}</b></div><div><span>${esc(previousLabel)}</span><b>${comparison.previous?formatMetricValue(comparison.previous.value,cfg):'—'}</b></div><div><span>${esc(averageLabel)}</span><b>${comparison.average==null?'—':formatMetricValue(comparison.average,cfg)}</b></div></div></div><p class="metric-description">${esc(cfg.desc)}</p><div class="metric-formula"><span>계산</span><code>${esc(cfg.formula)}</code></div><div class="daily-comparison-note"><span aria-hidden="true">↔</span><p>${comparison.previous?`${fmtDate(comparison.previous.date)} 기록과 최근 ${comparison.recent.length}회 평균을 함께 표시합니다.`:'비교할 이전 기록이 아직 없습니다.'}</p></div><div class="detail-sample"><span>표본</span><b>${esc(metricSample(snapshot))}</b></div>`;
+    return;
+  }
+  const series=analysisSeries(data,{...analysisOpts(range),metric:id,viewUnit:ui.analysisView});analysisDetailSeries=series;
   const latest=series.at(-1),maxPoint=series.length?series.reduce((a,b)=>b.value>a.value?b:a):null,viewLabel=analysisViewOptions().find(x=>x[0]===ui.analysisView)?.[1]||'';
   $('#analysisDetail').innerHTML=`<div class="detail-head"><div><span class="detail-eyebrow">선택 지표 · ${esc(viewLabel)}</span><h2>${esc(cfg.name)} <strong>${formatMetricValue(value,cfg)}</strong></h2><p class="metric-full-name">${esc(cfg.full)}${cfg.ko?` · ${esc(cfg.ko)}`:''}</p></div><div class="detail-stat-strip"><div><span>기간 전체</span><b>${formatMetricValue(value,cfg)}</b></div><div><span>최근 구간</span><b>${latest?formatMetricValue(latest.value,cfg):'—'}</b></div><div><span>최대값</span><b>${maxPoint?formatMetricValue(maxPoint.value,cfg):'—'}</b></div></div></div><p class="metric-description">${esc(cfg.desc)}</p><div class="metric-formula"><span>계산</span><code>${esc(cfg.formula)}</code></div><div class="detail-chart-wrap">${detailChartSvg(series,cfg)}</div><div id="analysisPointInfo" class="chart-point-info">${latest?pointInfoHtml(latest,cfg):'선택한 조건에 표시할 추이 데이터가 없습니다.'}</div><div class="detail-sample"><span>표본</span><b>${esc(metricSample(snapshot))}</b></div>`;
 }
@@ -408,7 +459,7 @@ function renderAnalysisBreakdown(snapshot,range){
   }
   $('#analysisBreakdown').innerHTML=html||'<p class="scope-note">선택한 조건에 추가 분해 데이터가 없습니다.</p>';
 }
-function renderSideFilters(){const el=$('#sideFilters');if(ui.analysisSource==='game'&&ui.analysisDomain==='pitching'){el.innerHTML=sideFilterHtml('내 투구','own','throw')+sideFilterHtml('상대 타자','opp','bat');}else if(ui.analysisSource==='game'&&ui.analysisDomain==='hitting'){el.innerHTML=sideFilterHtml('내 타격','own','bat')+sideFilterHtml('상대 투수','opp','throw');}else if(ui.analysisSource==='training'&&['pitching','hitting'].includes(ui.analysisDomain)){el.innerHTML=sideFilterHtml(ui.analysisDomain==='pitching'?'투구 방향':'타격 방향','own',ui.analysisDomain==='pitching'?'throw':'bat');ui.oppSide='all';}else{el.innerHTML='';ui.ownSide='all';ui.oppSide='all';}}
+function renderSideFilters(){const el=$('#sideFilters'),conditions=$('#analysisConditions');if(ui.analysisSource==='game'&&ui.analysisDomain==='pitching'){el.innerHTML=sideFilterHtml('내 투구','own','throw')+sideFilterHtml('상대 타자','opp','bat');}else if(ui.analysisSource==='game'&&ui.analysisDomain==='hitting'){el.innerHTML=sideFilterHtml('내 타격','own','bat')+sideFilterHtml('상대 투수','opp','throw');}else if(ui.analysisSource==='training'&&['pitching','hitting'].includes(ui.analysisDomain)){el.innerHTML=sideFilterHtml(ui.analysisDomain==='pitching'?'투구 방향':'타격 방향','own',ui.analysisDomain==='pitching'?'throw':'bat');ui.oppSide='all';}else{el.innerHTML='';ui.ownSide='all';ui.oppSide='all';}conditions.hidden=!el.innerHTML;if(!analysisConditionsInitialized){conditions.open=window.innerWidth>=900;analysisConditionsInitialized=true;}$('#analysisConditionSummary').textContent=analysisConditionText();}
 function sideFilterHtml(label,key,type){const cur=key==='own'?ui.ownSide:ui.oppSide;return `<div class="side-filter-block"><span>${label}</span><button data-analysis-side="${key}:all" class="${cur==='all'?'active':''}">전체</button><button data-analysis-side="${key}:R" class="${cur==='R'?'active':''}">${type==='throw'?'우투':'우타'}</button><button data-analysis-side="${key}:L" class="${cur==='L'?'active':''}">${type==='throw'?'좌투':'좌타'}</button></div>`;}
 
 function renderSettings(){
@@ -425,8 +476,10 @@ function bindStaticEvents(){
   $('#openDateLogs').addEventListener('click',()=>{ui.historyDate=ui.inputDate;ui.historyMode=ui.inputMode;ui.historyDomain=ui.domain;setView('history');});
   $('#historyDate').addEventListener('change',e=>{ui.historyDate=e.target.value;renderHistory();});$$('#historyMode button').forEach(b=>b.addEventListener('click',()=>{ui.historyMode=b.dataset.historyMode;renderHistory();}));$$('#historyDomain button').forEach(b=>b.addEventListener('click',()=>{ui.historyDomain=b.dataset.historyDomain;renderHistory();}));
   $$('#analysisSourceTabs button').forEach(b=>b.addEventListener('click',()=>{ui.analysisSource=b.dataset.analysisSource;if(ui.analysisSource==='training'){ui.analysisDomain='all';ui.analysisView='day';ui.analysisMetric='total_tlu';}else{if(ui.analysisDomain==='all')ui.analysisDomain='pitching';ui.analysisView='game';ui.analysisMetric=ui.analysisDomain==='hitting'?'OPS':ui.analysisDomain==='defense'?'fieldingSuccessPct':ui.analysisDomain==='baserunning'?'sbPct':'strikePct';}ui.ownSide='all';ui.oppSide='all';renderAnalysis();}));
-  $$('#analysisPeriodTabs button').forEach(b=>b.addEventListener('click',()=>{ui.analysisPeriod=b.dataset.period;if(ui.analysisPeriod==='custom'){ui.analysisFrom=ui.analysisFrom||dateShift(todayKey(),-29);ui.analysisTo=ui.analysisTo||todayKey();}renderAnalysis();}));
-  $('#analysisFrom').addEventListener('change',e=>{ui.analysisFrom=e.target.value||ui.analysisFrom;ui.analysisPeriod='custom';renderAnalysis();});$('#analysisTo').addEventListener('change',e=>{ui.analysisTo=e.target.value||ui.analysisTo;ui.analysisPeriod='custom';renderAnalysis();});
+  $$('#analysisPeriodTabs button').forEach(b=>b.addEventListener('click',()=>{ui.analysisPeriod=b.dataset.period;renderAnalysis();}));
+  $('#analysisAnchorDate').addEventListener('change',e=>{ui.analysisAnchor=e.target.value||todayKey();renderAnalysis();});
+  $('#analysisPrevDate').addEventListener('click',()=>moveAnalysisAnchor(-1));$('#analysisNextDate').addEventListener('click',()=>moveAnalysisAnchor(1));
+  $('#analysisViewSelect').addEventListener('change',e=>{ui.analysisView=e.target.value;renderAnalysis();});
   $$('#analysisDomainTabs button').forEach(b=>b.addEventListener('click',()=>{if(b.hidden)return;ui.analysisDomain=b.dataset.analysisDomain;ui.ownSide='all';ui.oppSide='all';ui.analysisMetric=ui.analysisSource==='training'?(ui.analysisDomain==='all'?'total_tlu':'volume'):(ui.analysisDomain==='hitting'?'OPS':ui.analysisDomain==='defense'?'fieldingSuccessPct':ui.analysisDomain==='baserunning'?'sbPct':'strikePct');renderAnalysis();}));
   $('#athleteSwitcher').addEventListener('click',()=>showModal('athletePicker'));$('#addAthleteBtn').addEventListener('click',()=>openAthleteModal());$('#pickerAddAthlete').addEventListener('click',()=>{hideModal('athletePicker');openAthleteModal();});$('#athleteForm').addEventListener('submit',saveAthleteForm);$('#deleteAthleteBtn').addEventListener('click',deleteAthleteFromModal);
   $$('[data-close]').forEach(b=>b.addEventListener('click',()=>hideModal(b.dataset.close)));document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.hidden=true;}));
@@ -442,7 +495,7 @@ function bindStaticEvents(){
 function delegatedClick(e){
   const pick=e.target.closest('[data-pick-athlete]');if(pick)return pickAthlete(pick.dataset.pickAthlete);
   const editA=e.target.closest('[data-edit-athlete]');if(editA)return openAthleteModal(editA.dataset.editAthlete);
-  const side=e.target.closest('[data-side-kind]');if(side)return setCurrentSide(side.dataset.sideKind,side.dataset.sideValue||null);
+  const side=e.target.closest('[data-side-kind]');if(side)return setCurrentSide(side.dataset.sideKind,side.dataset.sideValue);
   const as=e.target.closest('[data-analysis-side]');if(as){const [k,v]=as.dataset.analysisSide.split(':');if(k==='own')ui.ownSide=v;else ui.oppSide=v;return renderAnalysis();}
   const av=e.target.closest('[data-analysis-view]');if(av){ui.analysisView=av.dataset.analysisView;return renderAnalysis();}
   const am=e.target.closest('[data-analysis-metric]');if(am){ui.analysisMetric=am.dataset.analysisMetric;renderAnalysis();const detail=$('#analysisDetail');if(detail&&window.innerWidth<700)detail.scrollIntoView({behavior:'smooth',block:'start'});return;}
@@ -472,18 +525,18 @@ async function setCurrentSide(kind,value){
   if(ui.domain==='pitching'){
     let bf=inputBF();
     if(kind==='batter')ui.pendingBatterSide=value;if(kind==='pitcher')ui.pendingOwnPitchSide=value;
-    if(bf){if(kind==='batter')bf.batterSide=value;if(kind==='pitcher')bf.pitcherSide=value;await save('batterFaced',bf,{render:false});}
+    if(bf){if(kind==='batter')bf.batterSide=value||null;if(kind==='pitcher')bf.pitcherSide=value||null;await save('batterFaced',bf,{render:false});}
   } else if(ui.domain==='hitting'){
     let pa=inputPA();
     if(kind==='bat')ui.pendingBatSide=value;if(kind==='oppPitcher')ui.pendingOppPitcherSide=value;
-    if(pa){if(kind==='bat')pa.batterSide=value;if(kind==='oppPitcher')pa.pitcherSide=value;await save('plateAppearances',pa,{render:false});}
+    if(pa){if(kind==='bat')pa.batterSide=value||null;if(kind==='oppPitcher')pa.pitcherSide=value||null;await save('plateAppearances',pa,{render:false});}
   }
   renderInput();
 }
 async function ensureBF(){
   let bf=inputBF();if(bf)return bf;const gd=await ensureGameDay();const a=athlete();bf={id:uuid(),athleteId:activeAthleteId,gameDayId:gd.id,sequenceNo:nextSequence('batterFaced',ui.inputDate),pitcherSide:ui.pendingOwnPitchSide||(a?.throws==='S'?null:a?.throws),batterSide:ui.pendingBatterSide||null,result:null,completed:false,activityDate:ui.inputDate,recordedAt:iso(),ownerId:accountOwnerId(),deletedAt:null};await save('batterFaced',bf,{render:false});ui.pendingBatterSide=null;return bf;
 }async function ensurePA(){
-  let pa=inputPA();if(pa)return pa;const gd=await ensureGameDay();const a=athlete(),prev=lastParent('pa');pa={id:uuid(),athleteId:activeAthleteId,gameDayId:gd.id,sequenceNo:nextSequence('plateAppearances',ui.inputDate),batterSide:ui.pendingBatSide||(a?.bats==='S'?null:a?.bats),pitcherSide:ui.pendingOppPitcherSide??prev?.pitcherSide??null,result:null,completed:false,activityDate:ui.inputDate,recordedAt:iso(),ownerId:accountOwnerId(),deletedAt:null};await save('plateAppearances',pa,{render:false});ui.pendingBatSide=null;return pa;
+  let pa=inputPA();if(pa)return pa;const gd=await ensureGameDay();const a=athlete(),prev=lastParent('pa');pa={id:uuid(),athleteId:activeAthleteId,gameDayId:gd.id,sequenceNo:nextSequence('plateAppearances',ui.inputDate),batterSide:ui.pendingBatSide||(a?.bats==='S'?null:a?.bats),pitcherSide:(ui.pendingOppPitcherSide??prev?.pitcherSide??null)||null,result:null,completed:false,activityDate:ui.inputDate,recordedAt:iso(),ownerId:accountOwnerId(),deletedAt:null};await save('plateAppearances',pa,{render:false});ui.pendingBatSide=null;return pa;
 }async function recordPitch(type){
   if(type==='inplay'){ui.inPlayContext='pitching';$('#inPlayTitle').textContent='투구 · 타구 결과';$('#inPlayBallType').value='';$('#inPlayDirection').value='';showModal('inPlayModal');return;}
   const bf=await ensureBF(),gd=await ensureGameDay();const e={id:uuid(),athleteId:activeAthleteId,gameDayId:gd.id,domain:'pitching',parentType:'batter_faced',parentId:bf.id,eventType:type,activityDate:ui.inputDate,recordedAt:iso(),metadata:{tlu:1},ownerId:accountOwnerId(),deletedAt:null};await save('gameEvents',e,{render:false});await maybeCompleteBF(bf);renderAll();
@@ -599,7 +652,7 @@ async function saveEditedRecord(e){e.preventDefault();const store=$('#editRecord
 function maskEmail(email=''){const [name='',domain='']=String(email).split('@');if(!domain)return '';return `${name.slice(0,2)}${name.length>2?'***':''}@${domain}`;}
 async function buildBackupPayload(){
   const uid=accountOwnerId(),accountData=await snapshot({ownerId:uid});
-  return {version:7,schemaVersion:7,appVersion:'7.0.0',exportOwnerId:uid,exportEmailHint:maskEmail(cloud.session?.user?.email||''),exportedAt:iso(),data:accountData};
+  return {version:7,schemaVersion:7,appVersion:'7.1.0',exportOwnerId:uid,exportEmailHint:maskEmail(cloud.session?.user?.email||''),exportedAt:iso(),data:accountData};
 }
 function downloadBackupFile(payload,suffix='백업'){
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),a=document.createElement('a');
@@ -650,7 +703,7 @@ function showLogin(message=''){showAuthPanel('authLoginPanel');setAuthMessage('#
 function showPasswordSetup(type='invite'){showAuthPanel('authPasswordPanel');$('#passwordPanelTitle').textContent=type==='recovery'?'새 비밀번호를 설정하세요':'초대를 마무리하세요';$('#passwordPanelCopy').textContent=type==='recovery'?'앞으로 사용할 새 비밀번호를 입력하세요.':'초대받은 계정에서 사용할 비밀번호를 설정하면 야구일기가 열립니다.';setAuthMessage('#passwordMessage','');}
 function showAppShell(){$('#authGate').hidden=true;$('#app').hidden=false;}
 function resetAccountMemory(){
-  data={athletes:[],gameDays:[],batterFaced:[],plateAppearances:[],gameEvents:[],trainingSets:[]};activeAthleteId=null;resumeContext=null;expandedBF.clear();expandedPA.clear();lastDeleted=null;pendingRestore=null;
+  data={athletes:[],gameDays:[],batterFaced:[],plateAppearances:[],gameEvents:[],trainingSets:[]};activeAthleteId=null;resumeContext=null;expandedBF.clear();expandedPA.clear();lastDeleted=null;pendingRestore=null;ui.analysisAnchor=todayKey();ui.analysisPeriod='1';ui.ownSide='all';ui.oppSide='all';analysisConditionsInitialized=false;
   for(const id of ['athleteList','athletePickerList','historyList','recentInputList','analysisMetrics','analysisDetail','analysisBreakdown']){const el=$('#'+id);if(el)el.innerHTML='';}
   $$('.modal-backdrop').forEach(modal=>modal.hidden=true);$('#toast').classList.remove('show');
 }
@@ -747,7 +800,7 @@ async function recheckLegacyData(){
 function renderCloudStatus(forceStatus=null,forceText=null){
   const pill=$('#cloudPill'),badge=$('#cloudBadge');if(!pill||!badge)return;let status=forceStatus,text=forceText;
   if(!status){if(cloud.lastError){status='error';text='동기화 오류';}else if(!navigator.onLine){status='offline';text='오프라인';}else if(cloud.syncing){status='syncing';text='동기화 중';}else if(pendingSyncCount()){status='syncing';text='저장 대기';}else{status='synced';text='동기화됨';}}
-  pill.className=`cloud-pill ${status}`;pill.textContent=text;badge.className=`cloud-badge ${status}`;badge.textContent=text;
+  pill.className=`cloud-pill ${status}`;pill.textContent=text;badge.className=`cloud-badge ${status}`;badge.textContent=text;const button=$('#syncNowBtn');if(button){button.disabled=cloud.syncing;button.querySelector('b').textContent=cloud.syncing?'동기화 중…':'지금 동기화';}
 }
 function renderCloudUI(){
   if(!cloud.accountUid)return;const pending=pendingSyncCount();$('#cloudUserEmail').textContent=cloud.session?.user?.email||'로그인됨';$('#cloudStatusText').textContent=cloud.lastError?cloud.lastError:!navigator.onLine?'오프라인 기록은 이 계정 전용으로 기기에 보관됩니다.':'서버와 이 기기의 계정 전용 기록을 자동으로 맞춥니다.';$('#cloudPendingCount').textContent=pending?`동기화 대기 ${pending}건`:cloud.localOnlyCount?`동기화 완료 · 비정상 기존 행 ${cloud.localOnlyCount}건은 로컬 보존`:'모든 변경사항 동기화 완료';$('#cloudLastSync').textContent=cloud.lastSync?`마지막 동기화: ${new Date(cloud.lastSync).toLocaleString('ko-KR')}`:'아직 동기화 기록이 없습니다.';renderCloudStatus();
@@ -833,7 +886,7 @@ async function syncCloud(manual=false,{render=true,expectedActivation=null}={}){
   cloud.syncPromise=task;return task;
 }
 
-function registerPWA(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#installMini').style.display='inline-block';});}
+function registerPWA(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=7.1.0',{updateViaCache:'none'}).then(reg=>reg.update()).catch(console.error));window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#installMini').style.display='inline-block';});}
 async function promptInstall(){if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;return;}showToast('홈 화면에 추가','브라우저 메뉴의 앱 설치/홈 화면에 추가를 사용하세요.');}
 
 init().catch(err=>{

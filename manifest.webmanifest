@@ -3,12 +3,14 @@
   "short_name": "야구일기",
   "description": "한 공 한 공, 나의 야구를 차곡차곡 기록하는 야구일기",
   "start_url": "./",
+  "id": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#112A5B",
   "theme_color": "#112A5B",
   "icons": [
-    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
-    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+    {"src":"icon-192-v7.1.0.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"icon-512-v7.1.0.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"icon-512-maskable-v7.1.0.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
   ]
 }
