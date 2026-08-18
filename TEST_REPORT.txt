@@ -1,13 +1,13 @@
-야구일기 V7.1.0 - Test Report
+야구일기 V7.2.0 - Test Report
 Date: 2026-08-18
 
 결과 요약
-- 자동 테스트 스크립트 9개 PASS
+- V7.2 전용 자동 테스트 3개 PASS
+- V7 계정/저장/백업/초대/orphan 회귀 테스트 5개 PASS
 - JavaScript 문법 검사 PASS
-- V7.1 분석 범위/이전·다음 기록일 계산 PASS
-- V7.1 입력·분석·계정 UI DOM 동작 PASS
-- 기존 계정 격리·백업·초대·마이그레이션 회귀 PASS
-- PWA 아이콘/Service Worker 정적 구성 PASS
+- 공별 투타 방향 저장·수정·분석 PASS
+- 강판/취소/입력 비잠금/분모 제외 PASS
+- V7.1 기준일·수비·주루·계정·설치 아이콘 비변경 검사 PASS
 
 자동 검증 환경
 - Node.js v24
@@ -15,88 +15,71 @@ Date: 2026-08-18
 - fake-indexeddb
 - Supabase Auth/REST 동작 모의 객체
 
-1. JavaScript 문법
-PASS - js/app.js
-PASS - js/analysis-scope.js
-PASS - js/analytics.js
-PASS - js/storage.js
-PASS - sw.js
-
-2. V7.1 입력 UI
-PASS - 경기·투구 좌측 컨텍스트에 내 투구 2개, 상대 타자 3개 옵션 렌더링
-PASS - 경기·타격 좌측 컨텍스트에 내 타격 2개, 상대 투수 3개 옵션 렌더링
-PASS - 각 컨텍스트 옵션이 전체 너비를 나눠 갖는 CSS 구조 확인
-PASS - 직전 우투 상대 후 미입력을 선택하면 새 PA의 pitcherSide=null 저장
-PASS - 주루 성공/실패 2개 버튼 렌더링 및 선택 상태 전환
-PASS - 수비 입력 양식에 V7.1 전용 변경 없음
-
-3. V7.1 기준일·조회 기간
-PASS - 기본 상태 오늘·1일
-PASS - 1일/7일/30일/90일/시즌/누적의 종료일은 모두 기준일
-PASS - 7일=기준일 포함 7일, 30일=30일, 90일=90일 계산
-PASS - 윤년 경계 2024-03-01 기준 7일 시작일=2024-02-24
-PASS - 누적 시작일은 선택한 소스에서 기준일 이하의 최초 기록일
-PASS - 미래 기록일은 누적 시작일 계산에서 제외
-PASS - 이전/다음 이동은 실제 경기일 또는 훈련일만 사용
-PASS - 기록 없는 선택일에서도 기준일 자동 이동 없음
-PASS - 직접 조회 기간 입력 UI와 custom 상태 제거
-
-4. V7.1 분석 UI
-PASS - 1일에서 조회 단위 숨김
-PASS - 1일 상세에서 선택일/직전 경기 기록/최근 5회 평균 표시
-PASS - 7일 이상에서 조회 단위 표시
-PASS - 실제 시작일–종료일과 기록일 수 요약 표시
-PASS - 투구/타격/수비/주루 전환 후 기준일·기간 유지
-PASS - 경기/훈련 소스 전환 후 기준일·기간 유지
-PASS - 선택 범위에 데이터가 없으면 상세/분해 카드 대신 명시적 빈 상태 표시
-PASS - 수비에도 공통 기준일·조회 기간 UI 적용
-
-5. 반응형 CSS
-PASS - PC 2열 분석 범위 카드
-PASS - 899px 이하 태블릿 세로 1열 전환
-PASS - 599px 이하 모바일 세로 3×2 기간 버튼과 조회 단위 select 전환
-PASS - 낮은 가로 화면용 압축 레이아웃
-PASS - 719px 이하 모바일 가로에서 분석 범위/입력 패널 1열 안전 전환
-PASS - coarse pointer 핵심 버튼 최소 높이 48px
+1. JavaScript와 정적 구조
+PASS - js/app.js 문법
+PASS - js/analytics.js 문법
+PASS - js/analysis-scope.js 문법
+PASS - VERSION=7.2.0, 백업 appVersion=7.2.0
+PASS - Service Worker cache=baseball-diary-v7.2.0과 V7.2 asset query
 PASS - CSS 중괄호 구조 일치
 
-6. PWA 아이콘과 캐시
-PASS - VERSION=7.1.0
-PASS - manifest id='./' 유지
-PASS - 192/512/maskable 아이콘이 V7.1 전용 파일명 사용
-PASS - 각 PNG 실제 크기 192×192 / 512×512
-PASS - Service Worker cache=baseball-diary-v7.1.0
-PASS - Service Worker CORE에 analysis-scope 및 V7.1 아이콘 3종 포함
-PASS - Service Worker 등록 시 updateViaCache='none' 및 reg.update() 호출
+2. 입력 UI와 반응형 구조
+PASS - 투구 투타 선택이 #inputForm의 제목 바로 아래에 렌더링
+PASS - 타격 투타 선택이 #inputForm의 제목 바로 아래에 렌더링
+PASS - #inputSummary에는 투타 선택 UI가 없음
+PASS - 내 우투/내 좌투/내 우타/내 좌타 문구 제거
+PASS - 900px 이하 단일 열 입력 패널 우선 배치와 720~900px 낮은 가로 화면의 좌측 요약/우측 입력 복원
+PASS - 599px 이하 투타 선택 한 열 배치와 최소 버튼 높이
+PASS - 공 수정 모달에 해당 공의 투타 방향 편집 필드 제공
 
-7. 계정 UI·동기화
-PASS - 지금 동기화/로그아웃 버튼이 각각 full 클래스와 단일 열 액션 구조 사용
-PASS - 동기화 중 지금 동기화 버튼 비활성화 및 문구 변경
-PASS - 로그인 전 앱/IndexedDB 차단
-PASS - 같은 기기 A 로그아웃 → B 로그인 시 A 선수/기록 비노출
+3. 공별 투타 방향 저장
+PASS - 같은 BF에서 우투→좌투 변경 시 두 공 metadata가 각각 R/L로 보존
+PASS - 같은 PA에서 상대 투수 우투→좌투 변경 시 두 공 metadata가 각각 R/L로 보존
+PASS - 타격 투수 변경용 별도 이벤트를 만들지 않음
+PASS - 부모 BF/PA는 최초 조건을 유지하고 각 공에는 실제 조건을 별도 저장
+PASS - 펼친 BF/PA에서 각 공을 우투 → 좌타 형식으로 표시
+PASS - metadata가 없는 과거 공은 부모 BF/PA 방향으로 fallback
+PASS - metadata에 명시한 null은 부모 방향으로 덮지 않음
+
+4. 공 기반/결과 기반 분석
+PASS - Official Pitches, Strike%, CSW% 등 공 지표가 각 공의 방향으로 분리
+PASS - BF/PA 결과가 마지막 공 방향으로 분리
+PASS - 초구 스트라이크가 실제 첫 공의 방향으로 분리
+PASS - P/BF와 P/PA가 마지막 공 조건에 맞는 완료 BF/PA의 전체 공 수로 계산
+PASS - 방향 미입력 공은 전체 집계에 포함되고 R/L 조건 집계에서는 제외
+PASS - 투구/타격 방향 미입력 공 수 반환
+PASS - pitching_exit가 정상 canonical 이벤트로 처리
+
+5. 강판 흐름
+PASS - 타자 상대 중 강판 시 BF.result=RELIEVED, completed=false
+PASS - 강판 전 공이 Official Pitches와 TLU에 포함
+PASS - 강판 BF가 완료 BF, K/BB%, P/BF 분모에서 제외
+PASS - 강판 중단 수와 강판 이벤트 수 분리 집계
+PASS - 강판 기록 직후 투구 입력이 활성 상태로 유지
+PASS - 강판 뒤 다음 공 입력 시 새 BF 생성
+PASS - 강판 취소 시 연결 BF 재개
+PASS - 중간 강판 이벤트가 마지막 기록 공의 투타 조건을 보존
+PASS - migration_v8.sql과 업로드 유효성 검사에 pitching_exit 허용
+
+6. 기존 기능 회귀
+PASS - 분석 기준일/조회 기간 로직은 V7.1과 버전 query 외 동일
+PASS - 1일/7일/30일/90일/시즌/누적 유지, custom 기간 없음
+PASS - 수비 입력 함수와 수비 분석 함수는 V7.1과 동일
+PASS - 주루 입력/저장/분석 함수는 V7.1과 동일
+PASS - 주루 성공/실패 버튼 2개 유지
+PASS - 계정 동기화/로그아웃 markup과 전체 너비 버튼 유지
+PASS - manifest와 V7.1 설치 아이콘 3종 checksum 동일
 PASS - UID별 IndexedDB 분리와 현재 UID 외 ownerId 쓰기 거부
+PASS - 같은 기기 A 로그아웃 → B 로그인 시 A 기록 비노출
+PASS - 계정별 백업, 다른 계정 백업 차단, V6 백업 미리보기
+PASS - 초대 링크 비밀번호 설정과 계정 활성화
+PASS - orphan/부모 없는 공식 투구 로컬 보존 및 업로드·분석 제외
 
-8. 백업·초대·기존 기록 회귀
-PASS - 백업 appVersion=7.1.0 및 현재 exportOwnerId만 포함
-PASS - A 백업을 B에서 미리보기 전에 차단
-PASS - 소유자가 없는 V6 백업은 현재 계정 복원 미리보기 허용
-PASS - 초대 링크 비밀번호 설정 후 계정 활성화
-PASS - 다계정 V6 DB에서 현재 UID 관계 행만 이전
-PASS - orphan/부모 없는 공식 투구를 로컬 보존하고 업로드·분석에서 제외
-
-9. 분석 엔진 회귀
-PASS - 활성 BF 아래 공식 투구만 Official Pitches 집계
-PASS - 누락/삭제 BF와 부모 없는 공식 투구 제외
-PASS - Strike%, game_warmup TLU, BF 집계 유지
-PASS - 활성 PA 아래 타격 투구만 타격 pitch/PA 집계
-PASS - defense/baserunning의 정상 부모 없는 이벤트 유지
-
-실기기에서 최종 확인할 항목
-- PC/태블릿/모바일 세로·가로의 글자 줄바꿈, 터치감, 스크롤 길이
-- Android/데스크톱 설치 PWA 런처 아이콘 갱신 시점
-- iPhone 홈 화면 아이콘 캐시와 재설치 결과
-- 실제 Supabase 계정의 RLS 격리·동기화
-- 오프라인 재실행과 온라인 복귀 동기화
+실기기·실서버에서 최종 확인할 항목
+- PC/태블릿/모바일 세로·가로의 줄바꿈, 터치감, 스크롤 길이
+- 실제 Supabase에 migration_v8.sql 적용 후 pitching_exit 동기화
+- 온라인 최초 실행 후 오프라인 재실행과 온라인 복귀 동기화
+- Android/iPhone/데스크톱의 기존 V7.1 설치 아이콘 유지
 
 결론
-V7.1 구현 범위의 자동 검증은 모두 통과했습니다. 수비 입력 구조와 수비 전용 지표는 변경하지 않았으며, 공통 분석 기준일·조회 기간만 수비에 동일 적용했습니다. 배포 후 실기기 항목은 GITHUB_UPLOAD_CHECKLIST.txt 순서로 확인하세요.
+V7.2 합의 범위의 자동 검증은 모두 통과했습니다. 수비 입력/수비 전용 분석, 기존 기준일·조회 기간, 주루, 계정 UI, 설치 아이콘은 변경하지 않았습니다. 배포 전과 실기기 검증은 GITHUB_UPLOAD_CHECKLIST.txt 순서로 진행하세요.
