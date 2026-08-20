@@ -88,13 +88,23 @@ assert.doesNotMatch(app,/class="seq-badge"/,'투구·타격 카드에 #/PA 순�
 assert.match(app,/function defenseCardHtml/,'포구·송구 2단 결과 수비 카드가 있어야 합니다.');
 assert.match(app,/defense-result-stack/,'수비 결과는 포구와 송구를 독립된 두 줄로 표시해야 합니다.');
 assert.doesNotMatch(extractFunction(app,'defenseCardHtml'),/fmtTime/,'수비 카드에 입력 시각을 표시하면 안 됩니다.');
-assert.doesNotMatch(extractFunction(app,'baserunningRowHtml'),/fmtTime/,'도루 카드에 입력 시각을 표시하면 안 됩니다.');
-assert.match(extractFunction(app,'baserunningRowHtml'),/data-edit-store/,'도루 카드는 수정 버튼을 바로 제공해야 합니다.');
-const cardContext={expandedDefense:new Set(),esc:value=>String(value??''),n2:value=>String(value)};
-for(const name of ['fieldTypeLabel','throwTargetLabel','fieldResultTone','throwResultTone','fieldResultLabel','throwResultLabel','defenseCardHtml','baserunningRowHtml'])vm.runInNewContext(extractFunction(app,name),cardContext);
+assert.doesNotMatch(extractFunction(app,'baserunningCardHtml'),/fmtTime/,'도루 카드에 입력 시각을 표시하면 안 됩니다.');
+assert.doesNotMatch(app,/class="defense-card-toggle"|class="result-event-row"/,'수비·도루에 별도 카드 UI를 사용하면 안 됩니다.');
+const cardContext={expandedDefense:new Set(),expandedBaserunning:new Set(),esc:value=>String(value??''),n2:value=>String(value)};
+for(const name of ['fieldTypeLabel','throwTargetLabel','fieldResultTone','throwResultTone','fieldResultLabel','throwResultLabel','eventRecordActionsHtml','defenseCardHtml','baserunningCardHtml'])vm.runInNewContext(extractFunction(app,name),cardContext);
 const defenseHtml=cardContext.defenseCardHtml({id:'d1',metadata:{position:'SS',fieldingType:'BACKHAND',fieldingResult:'success',throwResult:'error',throwTarget:'1B',throwTLU:.85}});
-assert.match(defenseHtml,/포구 성공/);assert.match(defenseHtml,/악송구/);assert.match(defenseHtml,/SS · 백핸드 \/ 1루 송구/);assert.match(defenseHtml,/data-toggle-defense="d1"/);
-const runHtml=cardContext.baserunningRowHtml({id:'r1',metadata:{from:'1B',to:'2B',result:'SUCCESS'}});assert.match(runHtml,/성공/);assert.match(runHtml,/도루 · 1루 → 2루/);assert.match(runHtml,/수정/);assert.match(runHtml,/삭제/);
+assert.match(defenseHtml,/포구 성공/);assert.match(defenseHtml,/악송구/);assert.match(defenseHtml,/SS · 백핸드 \/ 1루 송구/);assert.match(defenseHtml,/data-toggle-record="defense:d1"/);assert.match(defenseHtml,/⌄/);assert.doesNotMatch(defenseHtml,/수비 기록 수정|수비 기록 삭제/,'접힌 수비 카드에는 동작 버튼을 노출하면 안 됩니다.');
+cardContext.expandedDefense.add('d1');
+const expandedDefenseHtml=cardContext.defenseCardHtml({id:'d1',metadata:{position:'SS',fieldingType:'BACKHAND',fieldingResult:'success',throwResult:'error',throwTarget:'1B',throwTLU:.85}});
+assert.match(expandedDefenseHtml,/⌃/);assert.match(expandedDefenseHtml,/class="parent-action"[^>]*>수비 기록 수정/);assert.match(expandedDefenseHtml,/class="parent-action danger"[^>]*>수비 기록 삭제/);
+const runEvent={id:'r1',metadata:{from:'1B',to:'2B',result:'SUCCESS'}},runHtml=cardContext.baserunningCardHtml(runEvent);
+assert.match(runHtml,/성공/);assert.match(runHtml,/도루 · 1루 → 2루/);assert.match(runHtml,/data-toggle-record="baserunning:r1"/);assert.match(runHtml,/⌄/);assert.doesNotMatch(runHtml,/도루 기록 수정|도루 기록 삭제/,'접힌 도루 카드에는 동작 버튼을 노출하면 안 됩니다.');
+cardContext.expandedBaserunning.add('r1');
+const expandedRunHtml=cardContext.baserunningCardHtml(runEvent);
+assert.match(expandedRunHtml,/⌃/);assert.match(expandedRunHtml,/class="parent-action"[^>]*>도루 기록 수정/);assert.match(expandedRunHtml,/class="parent-action danger"[^>]*>도루 기록 삭제/);
+assert.match(app,/\$\{recordLabel\} 기록 수정/,'투구·타격 수정 버튼은 종목명을 표시해야 합니다.');
+assert.match(app,/\$\{recordLabel\} 기록 삭제/,'투구·타격 삭제 버튼은 종목명을 표시해야 합니다.');
+assert.doesNotMatch(app,/타자 기록 삭제/,'투구 카드에 타자 기록 삭제라는 잘못된 문구가 남으면 안 됩니다.');
 
 const historyFilterContext={
   ui:{historyStatus:'incomplete',historyOwnSide:'R',historyOppSide:'L'},
@@ -131,21 +141,27 @@ assert.match(css,/@media\(max-width:900px\)\{[\s\S]*?\.input-workspace\{grid-tem
 assert.match(css,/@media\(orientation:landscape\) and \(max-height:520px\) and \(max-width:950px\)\{[\s\S]*?\.input-workspace\{grid-template-columns:minmax\(235px,280px\) minmax\(0,1fr\)/,'720px 이상 낮은 가로 화면은 지표/입력 2열을 유지해야 합니다.');
 assert.match(css,/\.performance-compact\{display:grid/,'접힌 핵심 지표 그리드가 있어야 합니다.');
 assert.match(css,/\.input-summary-toggle\{[^}]*min-height:44px/,'지표 토글은 충분한 터치 높이를 가져야 합니다.');
-assert.match(css,/\.parent-toggle\{grid-template-columns:80px minmax\(0,1fr\) auto\}/,'모든 화면에서 결과-내용-화살표 순서여야 합니다.');
-assert.match(css,/\.defense-card-toggle\{[^}]*grid-template-columns:94px minmax\(0,1fr\) auto/,'수비 카드는 2단 결과와 상세 펼치기를 제공해야 합니다.');
-assert.match(css,/\.result-event-row\{[^}]*grid-template-columns:80px minmax\(0,1fr\) auto/,'도루 카드는 결과와 수정·삭제를 한 카드에 배치해야 합니다.');
+assert.match(css,/\.parent-card\{--record-result-width:56px\}/,'PC·태블릿 결과 영역은 기존 80px보다 약 30% 좁아야 합니다.');
+assert.match(css,/\.parent-toggle\{grid-template-columns:var\(--record-result-width\) minmax\(0,1fr\) 32px/,'모든 경기 기록은 결과-내용-화살표 공통 순서여야 합니다.');
+assert.match(css,/@media\(max-width:599px\)\{\.parent-card\{--record-result-width:50px\}/,'모바일 결과 영역도 기존 72px보다 약 30% 좁아야 합니다.');
+assert.match(css,/\.parent-actions\{width:100%;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\);gap:6px\}/,'모바일의 모든 기록 수정·삭제 버튼은 같은 2열 배치여야 합니다.');
+assert.match(app,/data-toggle-record="\$\{kind\}:\$\{p\.id\}"/,'투구·타격도 공통 펼침 속성을 사용해야 합니다.');
+assert.doesNotMatch(app,/data-toggle-parent|data-toggle-defense/,'이전 카드 전용 펼침 속성이 남으면 안 됩니다.');
+assert.doesNotMatch(css,/\.defense-card-toggle|\.result-event-row|\.event-result-badge|\.history-reset-conditions/,'이전 수비·도루·초기화 전용 스타일이 남으면 안 됩니다.');
 
 for(const id of ['historyAnchorDate','historyPrevDate','historyNextDate','historyPeriodTabs','historyConditions','historyConditionFields'])assert.match(html,new RegExp(`id="${id}"`),`기록 검색에 ${id}가 있어야 합니다.`);
 assert.doesNotMatch(html,/id="historyDate"/,'기존 단일 날짜 드롭다운은 제거해야 합니다.');
+assert.doesNotMatch(html,/id="historyResetConditions"/,'기록 상세 조건 초기화 버튼은 표시하면 안 됩니다.');
+assert.doesNotMatch(app,/\$\('#historyResetConditions'\)/,'삭제한 초기화 버튼에 이벤트를 연결하면 안 됩니다.');
 assert.match(app,/historyStatus:'all'/,'기록 상태 상세 조건이 있어야 합니다.');
 assert.match(app,/historyOwnSide:'all'/,'본인 우·좌 상세 조건이 있어야 합니다.');
 assert.match(app,/historyOppSide:'all'/,'상대 우·좌 상세 조건이 있어야 합니다.');
 assert.match(app,/조건 일치 \$\{matchingEventIds\.size\}\/\$\{events\.length\}구/,'공별 좌우 검색 일치 개수를 표시해야 합니다.');
 
-assert.equal(read('VERSION').trim(),'7.4.0');
-assert.match(app,/appVersion:'7\.4\.0'/);
-assert.match(sw,/baseball-diary-v7\.4\.0/);
-assert.match(html,/js\/app\.js\?v=7\.4\.0/);
+assert.equal(read('VERSION').trim(),'7.4.1');
+assert.match(app,/appVersion:'7\.4\.1'/);
+assert.match(sw,/baseball-diary-v7\.4\.1/);
+assert.match(html,/js\/app\.js\?v=7\.4\.1/);
 assert.doesNotMatch([app,analysisScope,html,sw].join('\n'),/[?&]v=7\.3\.0/,'실행 파일에 V7.3 캐시 쿼리가 남으면 안 됩니다.');
 
-console.log('V7.4 smoke tests: PASS');
+console.log('V7.4.1 smoke tests: PASS');
