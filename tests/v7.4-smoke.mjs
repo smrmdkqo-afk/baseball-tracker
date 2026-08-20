@@ -106,6 +106,33 @@ assert.match(app,/\$\{recordLabel\} 기록 수정/,'투구·타격 수정 버튼
 assert.match(app,/\$\{recordLabel\} 기록 삭제/,'투구·타격 삭제 버튼은 종목명을 표시해야 합니다.');
 assert.doesNotMatch(app,/타자 기록 삭제/,'투구 카드에 타자 기록 삭제라는 잘못된 문구가 남으면 안 됩니다.');
 
+const editFields={innerHTML:''},editStore={value:''},editId={value:''},editRecord={id:'run-edit',domain:'baserunning',eventType:'steal_attempt',activityDate:'2026-08-18',metadata:{from:'1B',to:'2B',result:'SUCCESS'},parentType:null,parentId:null};
+const editContext={
+  data:{gameEvents:[editRecord]},todayKey:()=> '2026-08-20',esc:value=>String(value??''),parentResultLabel:()=>'',BASERUNNING_NEXT_BASE:{'1B':'2B','2B':'3B','3B':'HOME'},
+  $:selector=>({'#editRecordStore':editStore,'#editRecordId':editId,'#recordEditFields':editFields}[selector]||null),showModal:()=>{}
+};
+vm.runInNewContext(extractFunction(app,'openRecordEdit'),editContext);editContext.openRecordEdit('gameEvents','run-edit');
+assert.match(editFields.innerHTML,/name="from"/,'도루 수정창에는 출발 베이스 선택이 있어야 합니다.');
+assert.match(editFields.innerHTML,/name="to"/,'도루 수정창에는 도착 베이스 선택이 있어야 합니다.');
+assert.match(editFields.innerHTML,/name="result"/,'도루 수정창에는 성공·실패 선택이 있어야 합니다.');
+assert.match(editFields.innerHTML,/value="1B" selected>1루/,'기존 출발 베이스를 선택해 표시해야 합니다.');
+assert.match(editFields.innerHTML,/value="2B" selected>2루/,'기존 도착 베이스를 선택해 표시해야 합니다.');
+assert.match(editFields.innerHTML,/value="SUCCESS" selected>성공/,'기존 도루 결과를 선택해 표시해야 합니다.');
+
+let editValues={activityDate:'2026-08-18',from:'2B',to:'3B',result:'FAILED',note:'스타트 수정'},saveCalls=0,renderCalls=0,toastTitle='';
+class EditFormData{get(key){return Object.prototype.hasOwnProperty.call(editValues,key)?editValues[key]:null;}has(key){return Object.prototype.hasOwnProperty.call(editValues,key);}}
+const saveEditContext={
+  data:{gameEvents:[editRecord]},FormData:EditFormData,validBaserunningRoute:(from,to)=>({'1B':'2B','2B':'3B','3B':'HOME'}[from]===to),round2:value=>value,
+  $:selector=>selector==='#editRecordStore'?{value:'gameEvents'}:selector==='#editRecordId'?{value:'run-edit'}:null,
+  save:async()=>{saveCalls++;},ensureGameDay:async()=>({id:'gd'}),recomputeParent:async()=>{},confirm:()=>true,hideModal:()=>{},renderAll:()=>{renderCalls++;},showToast:title=>{toastTitle=title;}
+};
+vm.runInNewContext(`async ${extractFunction(app,'saveEditedRecord')}`,saveEditContext);
+await saveEditContext.saveEditedRecord({preventDefault(){},currentTarget:{}});
+assert.equal(editRecord.metadata.from,'2B','수정한 출발 베이스를 저장해야 합니다.');assert.equal(editRecord.metadata.to,'3B','수정한 도착 베이스를 저장해야 합니다.');assert.equal(editRecord.metadata.result,'FAILED','수정한 성공·실패를 저장해야 합니다.');assert.equal(editRecord.metadata.note,'스타트 수정','도루 메모도 함께 저장해야 합니다.');assert.equal(saveCalls,1);assert.equal(renderCalls,1);
+editValues={activityDate:'2026-08-18',from:'1B',to:'HOME',result:'SUCCESS',note:''};saveCalls=0;toastTitle='';
+await saveEditContext.saveEditedRecord({preventDefault(){},currentTarget:{}});
+assert.equal(saveCalls,0,'두 베이스를 건너뛴 잘못된 도루 경로는 저장하면 안 됩니다.');assert.equal(toastTitle,'베이스를 확인하세요');
+
 const historyFilterContext={
   ui:{historyStatus:'incomplete',historyOwnSide:'R',historyOppSide:'L'},
   parentsFor:()=>[
@@ -158,10 +185,10 @@ assert.match(app,/historyOwnSide:'all'/,'본인 우·좌 상세 조건이 있어
 assert.match(app,/historyOppSide:'all'/,'상대 우·좌 상세 조건이 있어야 합니다.');
 assert.match(app,/조건 일치 \$\{matchingEventIds\.size\}\/\$\{events\.length\}구/,'공별 좌우 검색 일치 개수를 표시해야 합니다.');
 
-assert.equal(read('VERSION').trim(),'7.4.1');
-assert.match(app,/appVersion:'7\.4\.1'/);
-assert.match(sw,/baseball-diary-v7\.4\.1/);
-assert.match(html,/js\/app\.js\?v=7\.4\.1/);
+assert.equal(read('VERSION').trim(),'7.4.2');
+assert.match(app,/appVersion:'7\.4\.2'/);
+assert.match(sw,/baseball-diary-v7\.4\.2/);
+assert.match(html,/js\/app\.js\?v=7\.4\.2/);
 assert.doesNotMatch([app,analysisScope,html,sw].join('\n'),/[?&]v=7\.3\.0/,'실행 파일에 V7.3 캐시 쿼리가 남으면 안 됩니다.');
 
-console.log('V7.4.1 smoke tests: PASS');
+console.log('V7.4.2 smoke tests: PASS');
