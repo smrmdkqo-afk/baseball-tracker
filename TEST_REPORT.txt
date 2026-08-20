@@ -1,85 +1,78 @@
-야구일기 V7.2.0 - Test Report
-Date: 2026-08-18
+야구일기 V7.3.0 - Test Report
+Date: 2026-08-20
 
 결과 요약
-- V7.2 전용 자동 테스트 3개 PASS
-- V7 계정/저장/백업/초대/orphan 회귀 테스트 5개 PASS
+- V7.3 전용 스모크 테스트 PASS
 - JavaScript 문법 검사 PASS
-- 공별 투타 방향 저장·수정·분석 PASS
-- 강판/취소/입력 비잠금/분모 제외 PASS
-- V7.1 기준일·수비·주루·계정·설치 아이콘 비변경 검사 PASS
+- 과거 날짜 미완료 BF/PA 상태 계산 PASS
+- 명시적 계속 입력과 자동 연결 방지 PASS
+- 자정·포커스·백그라운드 복귀 날짜 갱신 구조 PASS
+- 세로 1열 지표 우선 배치와 낮은 가로 2열 유지 구조 PASS
+- 지표 핵심 요약·접기·펼치기·선택 저장 구조 PASS
+- V7.3 버전·PWA 캐시 일치 PASS
+- git diff 공백 오류 검사 PASS
 
-자동 검증 환경
-- Node.js v24
-- JSDOM
-- fake-indexeddb
-- Supabase Auth/REST 동작 모의 객체
+검증 명령
+- node tests/v7.3-smoke.mjs
+- node --check js/app.js
+- node --check js/analytics.js
+- node --check js/analysis-scope.js
+- node --check js/storage.js
+- node --check sw.js
+- git diff --check
 
-1. JavaScript와 정적 구조
-PASS - js/app.js 문법
-PASS - js/analytics.js 문법
-PASS - js/analysis-scope.js 문법
-PASS - VERSION=7.2.0, 백업 appVersion=7.2.0
-PASS - Service Worker cache=baseball-diary-v7.2.0과 V7.2 asset query
-PASS - CSS 중괄호 구조 일치
+1. 날짜가 지난 미완료 기록
+PASS - 오늘의 마지막 미완료 BF만 현재 타자로 판정
+PASS - 과거 날짜 미완료 BF는 현재 타자로 판정하지 않음
+PASS - 오늘 기록이어도 더 최근 BF가 있으면 현재 타자로 판정하지 않음
+PASS - 결과 미상과 강판 중단 BF는 현재 타자로 판정하지 않음
+PASS - 같은 규칙을 BF/PA 공통 함수에 적용
+PASS - 미완료 기록 상태와 계속 입력 버튼 조건 확인
+PASS - 계속 입력으로 선택한 기록은 수정 중 상태로 분리
+PASS - 과거 날짜 미완료 BF/PA를 명시적 재개 없이 자동 입력 대상으로 사용하지 않음
+PASS - 계속 입력으로 재개한 과거 BF/PA는 기존 기록을 이어서 사용
 
-2. 입력 UI와 반응형 구조
-PASS - 투구 투타 선택이 #inputForm의 제목 바로 아래에 렌더링
-PASS - 타격 투타 선택이 #inputForm의 제목 바로 아래에 렌더링
-PASS - #inputSummary에는 투타 선택 UI가 없음
-PASS - 내 우투/내 좌투/내 우타/내 좌타 문구 제거
-PASS - 900px 이하 단일 열 입력 패널 우선 배치와 720~900px 낮은 가로 화면의 좌측 요약/우측 입력 복원
-PASS - 599px 이하 투타 선택 한 열 배치와 최소 버튼 높이
-PASS - 공 수정 모달에 해당 공의 투타 방향 편집 필드 제공
+2. 날짜 전환
+PASS - 자정 후 오늘을 따라가던 입력 날짜를 새 오늘로 이동
+PASS - 자정 후 오늘을 따라가던 분석 기준일을 새 오늘로 이동
+PASS - 과거 기록 수정 중에는 입력 날짜를 유지
+PASS - 사용자가 고른 과거 분석 기준일은 유지
+PASS - 자정 타이머, 창 포커스, 백그라운드 복귀 시 날짜 재확인
+PASS - 날짜 전환은 DB 행을 수정하지 않고 화면 상태만 다시 계산
 
-3. 공별 투타 방향 저장
-PASS - 같은 BF에서 우투→좌투 변경 시 두 공 metadata가 각각 R/L로 보존
-PASS - 같은 PA에서 상대 투수 우투→좌투 변경 시 두 공 metadata가 각각 R/L로 보존
-PASS - 타격 투수 변경용 별도 이벤트를 만들지 않음
-PASS - 부모 BF/PA는 최초 조건을 유지하고 각 공에는 실제 조건을 별도 저장
-PASS - 펼친 BF/PA에서 각 공을 우투 → 좌타 형식으로 표시
-PASS - metadata가 없는 과거 공은 부모 BF/PA 방향으로 fallback
-PASS - metadata에 명시한 null은 부모 방향으로 덮지 않음
+3. 입력 화면 배치
+PASS - index.html DOM 순서가 inputSummary 다음 inputForm
+PASS - 900px 이하 1열 레이아웃 유지
+PASS - 입력 패널을 위로 올리던 order:1 규칙 제거
+PASS - 지표 패널을 아래로 내리던 order:2 규칙 제거
+PASS - 720px 이상·높이 520px 이하 가로 화면은 지표 왼쪽/입력 오른쪽 2열 유지
+PASS - 719px 이하 낮은 가로 화면은 1열 유지
 
-4. 공 기반/결과 기반 분석
-PASS - Official Pitches, Strike%, CSW% 등 공 지표가 각 공의 방향으로 분리
-PASS - BF/PA 결과가 마지막 공 방향으로 분리
-PASS - 초구 스트라이크가 실제 첫 공의 방향으로 분리
-PASS - P/BF와 P/PA가 마지막 공 조건에 맞는 완료 BF/PA의 전체 공 수로 계산
-PASS - 방향 미입력 공은 전체 집계에 포함되고 R/L 조건 집계에서는 제외
-PASS - 투구/타격 방향 미입력 공 수 반환
-PASS - pitching_exit가 정상 canonical 이벤트로 처리
+4. 지표 접기
+PASS - 모바일 1열은 핵심 지표 4개 기본 표시
+PASS - 낮은 가로 2열과 데스크톱은 전체 지표 기본 표시
+PASS - 투구·타격·수비·주루·훈련별 핵심 지표 제공
+PASS - 상세 보기/접기 버튼과 aria-expanded/aria-controls 제공
+PASS - 토글 최소 높이 44px
+PASS - 선택한 접기·펼치기 상태를 localStorage에 저장
+PASS - 화면 크기 변경 시 자동 기본 상태만 재계산하고 사용자 선택은 유지
 
-5. 강판 흐름
-PASS - 타자 상대 중 강판 시 BF.result=RELIEVED, completed=false
-PASS - 강판 전 공이 Official Pitches와 TLU에 포함
-PASS - 강판 BF가 완료 BF, K/BB%, P/BF 분모에서 제외
-PASS - 강판 중단 수와 강판 이벤트 수 분리 집계
-PASS - 강판 기록 직후 투구 입력이 활성 상태로 유지
-PASS - 강판 뒤 다음 공 입력 시 새 BF 생성
-PASS - 강판 취소 시 연결 BF 재개
-PASS - 중간 강판 이벤트가 마지막 기록 공의 투타 조건을 보존
-PASS - migration_v8.sql과 업로드 유효성 검사에 pitching_exit 허용
-
-6. 기존 기능 회귀
-PASS - 분석 기준일/조회 기간 로직은 V7.1과 버전 query 외 동일
-PASS - 1일/7일/30일/90일/시즌/누적 유지, custom 기간 없음
-PASS - 수비 입력 함수와 수비 분석 함수는 V7.1과 동일
-PASS - 주루 입력/저장/분석 함수는 V7.1과 동일
-PASS - 주루 성공/실패 버튼 2개 유지
-PASS - 계정 동기화/로그아웃 markup과 전체 너비 버튼 유지
-PASS - manifest와 V7.1 설치 아이콘 3종 checksum 동일
-PASS - UID별 IndexedDB 분리와 현재 UID 외 ownerId 쓰기 거부
-PASS - 같은 기기 A 로그아웃 → B 로그인 시 A 기록 비노출
-PASS - 계정별 백업, 다른 계정 백업 차단, V6 백업 미리보기
-PASS - 초대 링크 비밀번호 설정과 계정 활성화
-PASS - orphan/부모 없는 공식 투구 로컬 보존 및 업로드·분석 제외
+5. 버전·PWA·변경 범위
+PASS - VERSION=7.3.0, 백업 appVersion=7.3.0
+PASS - index.html 및 ES module cache query=7.3.0
+PASS - Service Worker cache=baseball-diary-v7.3.0
+PASS - V7.1 설치 아이콘 파일명 유지
+PASS - Supabase 테이블·RLS·migration SQL 변경 없음
 
 실기기·실서버에서 최종 확인할 항목
-- PC/태블릿/모바일 세로·가로의 줄바꿈, 터치감, 스크롤 길이
-- 실제 Supabase에 migration_v8.sql 적용 후 pitching_exit 동기화
-- 온라인 최초 실행 후 오프라인 재실행과 온라인 복귀 동기화
-- Android/iPhone/데스크톱의 기존 V7.1 설치 아이콘 유지
+- 로그인된 실제 계정에서 과거 미완료 BF와 PA 각각 계속 입력
+- 앱을 자정 넘겨 열어 둔 상태와 백그라운드 복귀 상태
+- iPhone/Android/태블릿 세로의 실제 스크롤 길이와 지표 토글 터치감
+- 720~900px 낮은 가로 화면의 2열 폭과 긴 한국어 지표 줄바꿈
+- 기존 V7.2 데이터 동기화와 오프라인 재실행
+
+참고
+- Playwright 라이브러리는 확인했지만 이 작업 환경에는 실행 가능한 브라우저 바이너리가 없어 픽셀 기반 브라우저 검증은 수행하지 않았습니다. 반응형 검증은 DOM 순서, 미디어 쿼리, order 규칙과 기본 상태 함수를 자동 검사했습니다.
 
 결론
-V7.2 합의 범위의 자동 검증은 모두 통과했습니다. 수비 입력/수비 전용 분석, 기존 기준일·조회 기간, 주루, 계정 UI, 설치 아이콘은 변경하지 않았습니다. 배포 전과 실기기 검증은 GITHUB_UPLOAD_CHECKLIST.txt 순서로 진행하세요.
+V7.3 합의 범위의 코드·구조 자동 검증은 통과했습니다. 신규 Supabase SQL은 필요하지 않습니다. 배포 전 실제 계정과 실기기 확인은 GITHUB_UPLOAD_CHECKLIST.txt 순서로 진행하세요.
