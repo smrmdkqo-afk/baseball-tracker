@@ -1,3 +1,5 @@
+import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary} from './defense.js?v=7.5.0';
+
 export const OFFICIAL_PITCH_TYPES=new Set(['ball','called','swinging','foul','inplay','hbp']);
 export const STRIKE_PITCH_TYPES=new Set(['called','swinging','foul','inplay']);
 export const HITTING_PITCH_TYPES=new Set(['taken_ball','taken_strike','swinging_strike','foul','in_play','hbp']);
@@ -145,15 +147,32 @@ function isOutfieldPosition(p){return ['LF','CF','RF'].includes(String(p||'').to
 function fieldTypeBucket(m){return isOutfieldPosition(m.position)||m.positionGroup==='OF'?'OF':'IF';}
 export function defenseSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null,throwSide=null}={}){
   const events=canonicalGameEvents(data,{athleteId}).filter(e=>e.domain==='defense'&&matchDateAndGame(e,{date,from,to,gameDayId})&&e.eventType==='fielding_play'&&(!throwSide||((e.metadata?.throwSide||athleteThrowSide(data,athleteId))===throwSide)));
-  const field={success:0,unstable:0,failed:0},throws={success:0,error:0,none:0},ifTypes={},ofTypes={},targets={},targetStats={},fieldTypeThrowStats={};let throwTLU=0;
-  for(const e of events){const m=e.metadata||{};if(m.fieldingResult)field[m.fieldingResult]=(field[m.fieldingResult]||0)+1;if(m.throwResult)throws[m.throwResult]=(throws[m.throwResult]||0)+1;
-    if(m.throwTarget){targets[m.throwTarget]=(targets[m.throwTarget]||0)+1;const x=targetStats[m.throwTarget]||(targetStats[m.throwTarget]={attempts:0,success:0,error:0});if(['success','error'].includes(m.throwResult)){x.attempts++;x[m.throwResult]++;}}
-    if(m.fieldingType){const bucket=fieldTypeBucket(m),obj=bucket==='OF'?ofTypes:ifTypes;obj[m.fieldingType]=(obj[m.fieldingType]||0)+1;const x=fieldTypeThrowStats[m.fieldingType]||(fieldTypeThrowStats[m.fieldingType]={attempts:0,success:0,error:0,bucket});if(['success','error'].includes(m.throwResult)){x.attempts++;x[m.throwResult]++;}}
-    if(['success','error'].includes(m.throwResult))throwTLU+=Number(m.throwTLU??m.throwIntensity??0)||0;
+  const field={success:0,unstable:0,failed:0},throws={success:0,error:0,missing:0,none:0},receives={clean:0,recovered:0,failed:0,excluded:0,missing:0},covers={correct:0,recovered:0,failed:0,missing:0},reach={easy:0,effort:0,not_reached:0,missing:0},throwQuality={accurate:0,catchable:0,uncatchable:0,missing:0},throwTiming={on_time:0,late:0,no_chance:0,missing:0},actionCounts={field:0,throw:0,receive:0,cover:0},official={po:0,a:0,e:0,dp:0,missing:0,none:0},dataStatus={complete:0,incomplete:0,legacy:0},ifTypes={},ofTypes={},targets={},targetStats={},fieldTypeThrowStats={},outcomes={out:0,safe:0,continue:0,missing:0};let throwTLU=0,receiveSaveOpportunities=0,receiveSaves=0,scoopAttempts=0,scoopSuccess=0;
+  const judgment={best:0,acceptable:0,wrong:0,evaluated:0,appropriate:0};
+  for(const e of events){
+    const m=normalizeDefenseMetadata(e.metadata||{}),actions=m.actions||[],throwActions=actions.filter(x=>x.type==='throw');throwTLU+=defenseThrowTLU(m);
+    if(m.legacy)dataStatus.legacy++;else if(defenseMissingFields(m).length)dataStatus.incomplete++;else dataStatus.complete++;
+    outcomes[m.outcome||'missing']=(outcomes[m.outcome||'missing']||0)+1;if(m.official.status==='missing')official.missing++;else if(m.official.status==='none')official.none++;for(const key of ['po','a','e','dp'])if(m.official[key])official[key]++;
+    const js=defenseJudgmentSummary(m);for(const key of ['best','acceptable','wrong','evaluated','appropriate'])judgment[key]+=js[key]||0;
+    if(!throwActions.length)throws.none++;
+    for(const [actionIndex,action] of actions.entries()){
+      actionCounts[action.type]=(actionCounts[action.type]||0)+1;
+      if(action.type==='field'){
+        if(action.reach in reach)reach[action.reach]++;else reach.missing++;
+        if(action.reach==='not_reached')field.failed++;else if(action.result==='clean')field.success++;else if(action.result==='recovered')field.unstable++;else if(action.result==='failed')field.failed++;
+        if(action.fieldingType){const bucket=fieldTypeBucket(m),obj=bucket==='OF'?ofTypes:ifTypes;obj[action.fieldingType]=(obj[action.fieldingType]||0)+1;}
+      }else if(action.type==='throw'){
+        const quality=action.quality||'missing';throwQuality[quality]=(throwQuality[quality]||0)+1;if(['accurate','catchable'].includes(quality))throws.success++;else if(quality==='uncatchable')throws.error++;else throws.missing++;
+        const timing=action.timing||'missing';throwTiming[timing]=(throwTiming[timing]||0)+1;if(action.target){targets[action.target]=(targets[action.target]||0)+1;const x=targetStats[action.target]||(targetStats[action.target]={attempts:0,success:0,error:0,missing:0});x.attempts++;if(['accurate','catchable'].includes(quality))x.success++;else if(quality==='uncatchable')x.error++;else x.missing++;}
+        const previous=actions[actionIndex-1];if(previous?.type==='field'&&previous.fieldingType){const bucket=fieldTypeBucket(m),x=fieldTypeThrowStats[previous.fieldingType]||(fieldTypeThrowStats[previous.fieldingType]={attempts:0,success:0,error:0,missing:0,bucket});x.attempts++;if(['accurate','catchable'].includes(quality))x.success++;else if(quality==='uncatchable')x.error++;else x.missing++;}
+      }else if(action.type==='receive'){
+        const result=action.result||'missing';receives[result]=(receives[result]||0)+1;if(['high','low','wide','bounce'].includes(action.incoming)&&['clean','recovered','failed'].includes(result)){receiveSaveOpportunities++;if(['clean','recovered'].includes(result))receiveSaves++;}if(action.technique==='scoop'&&['clean','recovered','failed'].includes(result)){scoopAttempts++;if(['clean','recovered'].includes(result))scoopSuccess++;}
+      }else{const result=action.result||'missing';covers[result]=(covers[result]||0)+1;}
+    }
   }
-  for(const x of Object.values(targetStats))x.successPct=pct(x.success,x.attempts);for(const x of Object.values(fieldTypeThrowStats))x.successPct=pct(x.success,x.attempts);
-  const fieldAttempts=field.success+field.unstable+field.failed,throwAttempts=throws.success+throws.error;
-  return {plays:events.length,field,throws,ifTypes,ofTypes,targets,targetStats,fieldTypeThrowStats,fieldAttempts,fieldingSuccessPct:pct(field.success,fieldAttempts),throwSuccessPct:pct(throws.success,throwAttempts),throwTLU:round2(throwTLU),throwAttempts,events};
+  for(const x of Object.values(targetStats))x.successPct=pct(x.success,x.success+x.error);for(const x of Object.values(fieldTypeThrowStats))x.successPct=pct(x.success,x.success+x.error);
+  const fieldAttempts=field.success+field.unstable+field.failed,handledAttempts=field.success+field.unstable+field.failed-reach.not_reached,reachAttempts=reach.easy+reach.effort+reach.not_reached,throwQualityAttempts=throwQuality.accurate+throwQuality.catchable+throwQuality.uncatchable,throwAttempts=actionCounts.throw,receiveAttempts=receives.clean+receives.recovered+receives.failed,onTimeAttempts=throwTiming.on_time+throwTiming.late,totalChances=official.po+official.a+official.e;
+  return {plays:events.length,field,throws,receives,covers,reach,throwQuality,throwTiming,actionCounts,official,dataStatus,outcomes,ifTypes,ofTypes,targets,targetStats,fieldTypeThrowStats,fieldAttempts,handledAttempts,reachAttempts,fieldingSuccessPct:pct(field.success,fieldAttempts),cleanPct:pct(field.success,handledAttempts),securePct:pct(field.success+field.unstable,handledAttempts),reachPct:pct(reach.easy+reach.effort,reachAttempts),throwSuccessPct:pct(throws.success,throwQualityAttempts),onTargetPct:pct(throwQuality.accurate,throwQualityAttempts),catchablePct:pct(throws.success,throwQualityAttempts),onTimePct:pct(throwTiming.on_time,onTimeAttempts),receivePct:pct(receives.clean+receives.recovered,receiveAttempts),savePct:pct(receiveSaves,receiveSaveOpportunities),scoopPct:pct(scoopSuccess,scoopAttempts),receiveMissPct:pct(receives.failed,receiveAttempts),judgmentAppropriatePct:pct(judgment.appropriate,judgment.evaluated),judgment,throwTLU:round2(throwTLU),throwAttempts,throwQualityAttempts,totalChances,fieldingPct:pct(official.po+official.a,totalChances),events};
 }
 
 export function baserunningSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null}={}){
@@ -206,7 +225,7 @@ export function analysisMetricValue(snapshot,metric){
     if(snapshot.domain==='hitting'){
       const map={PA:s.PA,H:s.H,AVG:s.AVG,OBP:s.OBP,SLG:s.SLG,OPS:s.OPS,ISO:s.ISO,BABIP:s.BABIP,pitchesPerPA:s.pitchesPerPA,swingPct:s.swingPct==null?null:s.swingPct*100,whiffPct:s.whiffPct==null?null:s.whiffPct*100,contactPct:s.contactPct==null?null:s.contactPct*100,calledStrikePct:s.calledStrikePct==null?null:s.calledStrikePct*100,kPct:s.kPct==null?null:s.kPct*100,bbPct:s.bbPct==null?null:s.bbPct*100,bbPerK:s.bbPerK,swings:s.swings,gbPct:s.battedTypePct.GB==null?null:s.battedTypePct.GB*100,ldPct:s.battedTypePct.LD==null?null:s.battedTypePct.LD*100,fbPct:s.battedTypePct.FB==null?null:s.battedTypePct.FB*100};return map[metric]??null;
     }
-    if(snapshot.domain==='defense'){const map={plays:s.plays,fieldingSuccessPct:s.fieldingSuccessPct==null?null:s.fieldingSuccessPct*100,throwSuccessPct:s.throwSuccessPct==null?null:s.throwSuccessPct*100,throwAttempts:s.throwAttempts,throwTLU:s.throwTLU};return map[metric]??null;}
+    if(snapshot.domain==='defense'){const map={plays:s.plays,fieldingSuccessPct:s.fieldingSuccessPct==null?null:s.fieldingSuccessPct*100,cleanPct:s.cleanPct==null?null:s.cleanPct*100,securePct:s.securePct==null?null:s.securePct*100,reachPct:s.reachPct==null?null:s.reachPct*100,throwSuccessPct:s.throwSuccessPct==null?null:s.throwSuccessPct*100,onTargetPct:s.onTargetPct==null?null:s.onTargetPct*100,catchablePct:s.catchablePct==null?null:s.catchablePct*100,onTimePct:s.onTimePct==null?null:s.onTimePct*100,receivePct:s.receivePct==null?null:s.receivePct*100,savePct:s.savePct==null?null:s.savePct*100,scoopPct:s.scoopPct==null?null:s.scoopPct*100,receiveMissPct:s.receiveMissPct==null?null:s.receiveMissPct*100,judgmentAppropriatePct:s.judgmentAppropriatePct==null?null:s.judgmentAppropriatePct*100,throwAttempts:s.throwAttempts,throwTLU:s.throwTLU,PO:s.official.po,A:s.official.a,E:s.official.e,DP:s.official.dp,TC:s.totalChances,FPCT:s.fieldingPct};return map[metric]??null;}
     const map={sb:s.sb,cs:s.cs,attempts:s.attempts,sbPct:s.sbPct==null?null:s.sbPct*100};return map[metric]??null;
   }
   const d=snapshot.domainSummary,t=snapshot.summary,w=snapshot.workload;

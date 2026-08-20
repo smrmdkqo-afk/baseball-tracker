@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import vm from 'node:vm';
+import {normalizeDefenseMetadata,defenseMissingFields,defenseActionLabel,defenseActionShortLabel,defenseActionStatus,defenseCardStatuses,defenseOverallTone,defenseThrowTLU,defenseOfficialText,defenseOutcomeText,defenseJudgmentSummary} from '../js/defense.js';
 
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const read=path=>readFileSync(join(root,path),'utf8');
@@ -85,15 +86,15 @@ assert.match(app,/data-toggle-input-summary/,'지표 접기 버튼을 제공해�
 assert.match(app,/baseball-diary:input-summary-mode/,'지표 표시 선택을 브라우저에 저장해야 합니다.');
 assert.match(app,/class="result-badge \$\{state\.statusClass\}"/,'투구·타격 카드에는 결과 배지가 있어야 합니다.');
 assert.doesNotMatch(app,/class="seq-badge"/,'투구·타격 카드에 #/PA 순번 배지를 렌더링하면 안 됩니다.');
-assert.match(app,/function defenseCardHtml/,'포구·송구 2단 결과 수비 카드가 있어야 합니다.');
-assert.match(app,/defense-result-stack/,'수비 결과는 포구와 송구를 독립된 두 줄로 표시해야 합니다.');
+assert.match(app,/function defenseCardHtml/,'순차 동작 결과를 표시하는 수비 카드가 있어야 합니다.');
+assert.match(app,/defense-result-stack/,'수비 대표 결과는 색상 결과 영역에 표시해야 합니다.');
 assert.doesNotMatch(extractFunction(app,'defenseCardHtml'),/fmtTime/,'수비 카드에 입력 시각을 표시하면 안 됩니다.');
 assert.doesNotMatch(extractFunction(app,'baserunningCardHtml'),/fmtTime/,'도루 카드에 입력 시각을 표시하면 안 됩니다.');
 assert.doesNotMatch(app,/class="defense-card-toggle"|class="result-event-row"/,'수비·도루에 별도 카드 UI를 사용하면 안 됩니다.');
-const cardContext={expandedDefense:new Set(),expandedBaserunning:new Set(),esc:value=>String(value??''),n2:value=>String(value)};
-for(const name of ['fieldTypeLabel','throwTargetLabel','fieldResultTone','throwResultTone','fieldResultLabel','throwResultLabel','eventRecordActionsHtml','defenseCardHtml','baserunningCardHtml'])vm.runInNewContext(extractFunction(app,name),cardContext);
+const cardContext={expandedDefense:new Set(),expandedBaserunning:new Set(),esc:value=>String(value??''),n2:value=>String(value),normalizeDefenseMetadata,defenseMissingFields,defenseActionLabel,defenseActionShortLabel,defenseActionStatus,defenseCardStatuses,defenseOverallTone,defenseThrowTLU,defenseOfficialText,defenseOutcomeText,defenseJudgmentSummary};
+for(const name of ['fieldTypeLabel','throwTargetLabel','eventRecordActionsHtml','defenseValueLabel','defenseJudgmentLabel','defenseJudgmentDetailRows','defenseActionDetailRows','defenseRecordTimelineHtml','defenseCardHtml','baserunningCardHtml'])vm.runInNewContext(extractFunction(app,name),cardContext);
 const defenseHtml=cardContext.defenseCardHtml({id:'d1',metadata:{position:'SS',fieldingType:'BACKHAND',fieldingResult:'success',throwResult:'error',throwTarget:'1B',throwTLU:.85}});
-assert.match(defenseHtml,/포구 성공/);assert.match(defenseHtml,/악송구/);assert.match(defenseHtml,/SS · 백핸드 \/ 1루 송구/);assert.match(defenseHtml,/data-toggle-record="defense:d1"/);assert.match(defenseHtml,/⌄/);assert.doesNotMatch(defenseHtml,/수비 기록 수정|수비 기록 삭제/,'접힌 수비 카드에는 동작 버튼을 노출하면 안 됩니다.');
+assert.match(defenseHtml,/처리 성공/);assert.match(defenseHtml,/송구 불가/);assert.match(defenseHtml,/SS · 처리 → 송구/);assert.match(defenseHtml,/기존 형식/);assert.match(defenseHtml,/data-toggle-record="defense:d1"/);assert.match(defenseHtml,/⌄/);assert.doesNotMatch(defenseHtml,/수비 기록 수정|수비 기록 삭제/,'접힌 수비 카드에는 동작 버튼을 노출하면 안 됩니다.');
 cardContext.expandedDefense.add('d1');
 const expandedDefenseHtml=cardContext.defenseCardHtml({id:'d1',metadata:{position:'SS',fieldingType:'BACKHAND',fieldingResult:'success',throwResult:'error',throwTarget:'1B',throwTLU:.85}});
 assert.match(expandedDefenseHtml,/⌃/);assert.match(expandedDefenseHtml,/class="parent-action"[^>]*>수비 기록 수정/);assert.match(expandedDefenseHtml,/class="parent-action danger"[^>]*>수비 기록 삭제/);
@@ -185,10 +186,10 @@ assert.match(app,/historyOwnSide:'all'/,'본인 우·좌 상세 조건이 있어
 assert.match(app,/historyOppSide:'all'/,'상대 우·좌 상세 조건이 있어야 합니다.');
 assert.match(app,/조건 일치 \$\{matchingEventIds\.size\}\/\$\{events\.length\}구/,'공별 좌우 검색 일치 개수를 표시해야 합니다.');
 
-assert.equal(read('VERSION').trim(),'7.4.2');
-assert.match(app,/appVersion:'7\.4\.2'/);
-assert.match(sw,/baseball-diary-v7\.4\.2/);
-assert.match(html,/js\/app\.js\?v=7\.4\.2/);
+assert.equal(read('VERSION').trim(),'7.5.0');
+assert.match(app,/appVersion:'7\.5\.0'/);
+assert.match(sw,/baseball-diary-v7\.5\.0/);
+assert.match(html,/js\/app\.js\?v=7\.5\.0/);
 assert.doesNotMatch([app,analysisScope,html,sw].join('\n'),/[?&]v=7\.3\.0/,'실행 파일에 V7.3 캐시 쿼리가 남으면 안 됩니다.');
 
-console.log('V7.4.2 smoke tests: PASS');
+console.log('V7.4 regression smoke tests on V7.5.0: PASS');
