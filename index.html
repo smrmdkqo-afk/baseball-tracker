@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-title" content="야구일기" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>야구일기 · 나의 야구 기록장</title>
-  <link rel="manifest" href="manifest.webmanifest?v=7.3.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=7.4.0" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192-v7.1.0.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192-v7.1.0.png" />
-  <link rel="stylesheet" href="styles.css?v=7.3.0" />
+  <link rel="stylesheet" href="styles.css?v=7.4.0" />
 </head>
 <body>
 <section id="authGate" class="auth-gate" aria-live="polite">
@@ -84,7 +84,31 @@
 
     <section class="view" data-view="history">
       <div class="page-intro"><div><p class="kicker">HISTORY</p><h2>기록</h2></div><span id="historyCount" class="status-note">0 records</span></div>
-      <div class="filter-card"><label>날짜<select id="historyDate"><option value="all">모든 날짜</option></select></label><div id="historyMode" class="mini-tabs"><button class="active" data-history-mode="all">전체</button><button data-history-mode="game">경기</button><button data-history-mode="training">훈련</button></div><div id="historyDomain" class="mini-tabs"><button class="active" data-history-domain="all">전체</button><button data-history-domain="pitching">투구</button><button data-history-domain="hitting">타격</button><button data-history-domain="defense">수비</button><button data-history-domain="baserunning">주루</button></div></div>
+      <section class="history-controls">
+        <div class="history-context-row">
+          <div id="historyMode" class="segmented-control history-mode-tabs"><button class="active" data-history-mode="all">전체</button><button data-history-mode="game">경기</button><button data-history-mode="training">훈련</button></div>
+          <div id="historyDomain" class="domain-tabs history-domain-tabs"><button class="active" data-history-domain="all">전체</button><button data-history-domain="pitching">투구</button><button data-history-domain="hitting">타격</button><button data-history-domain="defense">수비</button><button data-history-domain="baserunning">주루</button></div>
+        </div>
+        <div class="history-scope-card">
+          <div class="history-date-block">
+            <div class="analysis-block-label"><span>기준일</span><small>조회 기간의 마지막 날</small></div>
+            <div class="history-date-navigator">
+              <button id="historyPrevDate" class="history-date-step" type="button" aria-label="이전 기록일"><span aria-hidden="true">‹</span><b>이전 기록</b></button>
+              <label class="history-anchor-field" for="historyAnchorDate"><span id="historyAnchorBadge" class="history-anchor-badge">오늘</span><input id="historyAnchorDate" type="date" aria-label="기록 검색 기준일" /><small id="historyAnchorMeta">기록 확인 중</small></label>
+              <button id="historyNextDate" class="history-date-step" type="button" aria-label="다음 기록일"><b>다음 기록</b><span aria-hidden="true">›</span></button>
+            </div>
+          </div>
+          <div class="history-period-block">
+            <div class="analysis-block-label"><span>조회 기간</span><small>기준일까지의 기록</small></div>
+            <div id="historyPeriodTabs" class="history-period-tabs" role="group" aria-label="기록 조회 기간"><button type="button" data-history-period="1">1일</button><button type="button" data-history-period="7">7일</button><button type="button" data-history-period="30">30일</button><button type="button" data-history-period="90">90일</button><button type="button" data-history-period="season">시즌</button><button class="active" type="button" data-history-period="all">누적</button></div>
+          </div>
+          <div id="historyScopeSummary" class="history-scope-summary" aria-live="polite"></div>
+        </div>
+        <details id="historyConditions" class="history-conditions">
+          <summary><span>상세 조건</span><small id="historyConditionSummary">전체 조건</small><i aria-hidden="true">⌄</i></summary>
+          <div class="history-condition-body"><div id="historyConditionFields" class="history-condition-fields"></div><button id="historyResetConditions" class="soft-btn history-reset-conditions" type="button">조건 초기화</button></div>
+        </details>
+      </section>
       <div id="historyList" class="history-list"></div>
     </section>
 
@@ -124,7 +148,7 @@
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.3.0</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.4.0</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge synced">동기화됨</span></div><div id="cloudLoggedIn" class="cloud-box cloud-account-box"><div class="cloud-account-head"><span class="cloud-account-icon" aria-hidden="true">☁</span><div><small>로그인 계정</small><b id="cloudUserEmail"></b></div></div><p id="cloudStatusText">계정 전용 저장공간을 사용 중입니다.</p><div class="cloud-sync-meta"><small id="cloudPendingCount" class="muted"></small><small id="cloudLastSync" class="muted"></small></div><div class="cloud-main-actions"><button id="syncNowBtn" class="primary-btn full" type="button"><span aria-hidden="true">↻</span><b>지금 동기화</b></button><button id="signOutBtn" class="soft-btn full" type="button"><span aria-hidden="true">↪</span><b>로그아웃</b></button></div><button id="signOutClearBtn" class="danger-ghost full" type="button">로그아웃하고 이 기기 캐시 삭제</button></div></section>
@@ -152,8 +176,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="vendor/supabase-2.112.3.min.js?v=7.3.0"></script>
-<script src="supabase-config.js?v=7.3.0"></script>
+<script src="vendor/supabase-2.112.3.min.js?v=7.4.0"></script>
+<script src="supabase-config.js?v=7.4.0"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -171,6 +195,6 @@ window.clearBaseballTrackerCache=async function(){
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=7.3.0" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=7.4.0" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>
