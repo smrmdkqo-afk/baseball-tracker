@@ -1,4 +1,5 @@
-import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary} from './defense.js?v=7.6.1';
+import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary} from './defense.js?v=7.7.0';
+import {normalizeDefenseTrainingRecord,defenseTrainingActionCount,defenseTrainingStats} from './defense-training.js?v=7.7.0';
 
 export const OFFICIAL_PITCH_TYPES=new Set(['ball','called','swinging','foul','inplay','hbp']);
 export const STRIKE_PITCH_TYPES=new Set(['called','swinging','foul','inplay']);
@@ -189,9 +190,27 @@ export function baserunningSummary(data,{athleteId,date=null,from=null,to=null,g
 
 export function trainingSummary(data,{athleteId,date=null,from=null,to=null,domain=null,side=null}={}){
   const sets=active(data.trainingSets).filter(s=>s.athleteId===athleteId&&(date?s.activityDate===date:inDateRange(s.activityDate,from,to))&&(!domain||domain==='all'||s.domain===domain)&&(!side||s.side===side));
-  const byDomain={pitching:{sets:0,volume:0,tlu:0},hitting:{sets:0,volume:0,tlu:0},defense:{sets:0,volume:0,tlu:0},baserunning:{sets:0,volume:0,tlu:0}},byType={},bySide={R:0,L:0,N:0},byArea={IF:0,OF:0,N:0},byIntensity={light:0,medium:0,max:0};let tlu=0,defenseThrowCount=0;
-  for(const s of sets){const d=byDomain[s.domain]||(byDomain[s.domain]={sets:0,volume:0,tlu:0});d.sets++;d.volume+=Number(s.quantity)||0;d.tlu+=Number(s.tluTotal)||0;tlu+=Number(s.tluTotal)||0;byType[s.trainingType]=(byType[s.trainingType]||0)+(Number(s.quantity)||0);bySide[s.side||'N']=(bySide[s.side||'N']||0)+(Number(s.quantity)||0);byArea[s.metadata?.area||'N']=(byArea[s.metadata?.area||'N']||0)+(Number(s.quantity)||0);if(s.domain==='pitching'&&s.metadata?.intensity in byIntensity)byIntensity[s.metadata.intensity]+=Number(s.quantity)||0;if(s.domain==='defense')defenseThrowCount+=Number(s.metadata?.throwCount||0);}
-  Object.values(byDomain).forEach(x=>x.tlu=round2(x.tlu));return {sets,byDomain,byType,bySide,byArea,byIntensity,defenseThrowCount,tlu:round2(tlu)};
+  const byDomain={pitching:{sets:0,volume:0,tlu:0},hitting:{sets:0,volume:0,tlu:0},defense:{sets:0,volume:0,tlu:0},baserunning:{sets:0,volume:0,tlu:0}},byType={},bySide={R:0,L:0,N:0},byArea={IF:0,OF:0,N:0},byIntensity={light:0,medium:0,max:0};
+  const defenseActionReps={field:0,receive:0,tag:0,base:0,throw:0,cover:0},byDefensePosition={},byDefenseFlow={},byDefenseBall={},byDefenseTarget={},byDefenseLoad={'0':0,'0.75':0,'0.85':0,'1':0},byDefenseMode={simple:0,scenario:0},defenseOutcomes={target:0,adjust:0,failed:0,evaluated:0,unassessed:0};
+  let tlu=0,defenseThrowCount=0,defenseActionRepsTotal=0,defenseSimpleSets=0,defenseScenarioSets=0,defenseSimpleReps=0,defenseScenarioReps=0;
+  for(const s of sets){
+    const quantity=Number(s.quantity)||0,d=byDomain[s.domain]||(byDomain[s.domain]={sets:0,volume:0,tlu:0}),defenseStats=s.domain==='defense'?defenseTrainingStats(s):null,setTLU=defenseStats?defenseStats.throwTLU:(Number(s.tluTotal)||0);
+    d.sets++;d.volume+=quantity;d.tlu+=setTLU;tlu+=setTLU;byType[s.trainingType]=(byType[s.trainingType]||0)+quantity;bySide[s.side||'N']=(bySide[s.side||'N']||0)+quantity;
+    if(s.domain==='pitching'&&s.metadata?.intensity in byIntensity)byIntensity[s.metadata.intensity]+=quantity;
+    if(s.domain!=='defense'){byArea[s.metadata?.area||'N']=(byArea[s.metadata?.area||'N']||0)+quantity;continue;}
+    const draft=normalizeDefenseTrainingRecord(s),mode=defenseStats.mode;byArea[draft.area||'N']=(byArea[draft.area||'N']||0)+quantity;byDefenseMode[mode]+=quantity;defenseThrowCount+=defenseStats.throwCount;defenseActionRepsTotal+=defenseStats.actionReps;
+    for(const key of Object.keys(defenseActionReps))defenseActionReps[key]+=defenseStats.actionRepsByType[key]||0;
+    for(const [load,count] of Object.entries(defenseStats.throwLoads))byDefenseLoad[load]=(byDefenseLoad[load]||0)+count;
+    for(const key of ['target','adjust','failed','evaluated','unassessed'])defenseOutcomes[key]+=defenseStats.outcomes[key]||0;
+    if(mode==='scenario'){
+      defenseScenarioSets++;defenseScenarioReps+=quantity;byDefensePosition[draft.position]=(byDefensePosition[draft.position]||0)+quantity;const flow=defenseStats.flow||'동작 미입력';byDefenseFlow[flow]=(byDefenseFlow[flow]||0)+quantity;
+      for(const action of draft.actions){const count=defenseTrainingActionCount(action,quantity);if(action.type==='field'&&action.battedBall)byDefenseBall[action.battedBall]=(byDefenseBall[action.battedBall]||0)+count;if(action.type==='throw'&&action.target)byDefenseTarget[action.target]=(byDefenseTarget[action.target]||0)+count;}
+    }else{defenseSimpleSets++;defenseSimpleReps+=quantity;}
+  }
+  Object.values(byDomain).forEach(x=>x.tlu=round2(x.tlu));
+  defenseOutcomes.targetPct=pct(defenseOutcomes.target,defenseOutcomes.evaluated);defenseOutcomes.adjustPct=pct(defenseOutcomes.adjust,defenseOutcomes.evaluated);defenseOutcomes.failedPct=pct(defenseOutcomes.failed,defenseOutcomes.evaluated);
+  const defenseVolume=byDomain.defense?.volume||0;
+  return {sets,byDomain,byType,bySide,byArea,byIntensity,defenseThrowCount,defenseActionReps:defenseActionRepsTotal,defenseActionCounts:defenseActionReps,defenseTluPerRep:defenseVolume?round2((byDomain.defense?.tlu||0)/defenseVolume):null,defenseSimpleSets,defenseScenarioSets,defenseSimpleReps,defenseScenarioReps,byDefenseMode,byDefensePosition,byDefenseFlow,byDefenseBall,byDefenseTarget,byDefenseLoad,defenseOutcomes,tlu:round2(tlu)};
 }
 
 export function workloadSummary(data,{athleteId,date=null,from=null,to=null,throwSide=null}={}){
@@ -200,7 +219,7 @@ export function workloadSummary(data,{athleteId,date=null,from=null,to=null,thro
   const defaultSide=athleteThrowSide(data,athleteId);
   const pitchingSets=allSets.filter(s=>s.domain==='pitching'&&(!throwSide||s.side===throwSide));
   const defenseSets=allSets.filter(s=>s.domain==='defense'&&(!throwSide||defaultSide===throwSide));
-  const pitchingTraining=pitchingSets.reduce((a,s)=>a+Number(s.tluTotal||0),0),defenseTraining=defenseSets.reduce((a,s)=>a+Number(s.tluTotal||0),0);
+  const pitchingTraining=pitchingSets.reduce((a,s)=>a+Number(s.tluTotal||0),0),defenseTraining=defenseSets.reduce((a,s)=>a+defenseTrainingStats(s).throwTLU,0);
   const officialPitchTLU=gp.officialPitches,pickoffTLU=round2((gp.pickoffs+gp.pickoffErrors)*0.85),warmupTLU=gp.warmups,gameDefenseThrowing=gd.throwTLU;
   return {officialPitchTLU,pickoffTLU,warmupTLU,gameDefenseThrowing:round2(gameDefenseThrowing),pitchingTraining:round2(pitchingTraining),defenseThrowing:round2(defenseTraining),total:round2(officialPitchTLU+pickoffTLU+warmupTLU+gameDefenseThrowing+pitchingTraining+defenseTraining)};
 }
@@ -238,7 +257,7 @@ export function analysisMetricValue(snapshot,metric){
   }
   if(snapshot.domain==='pitching'){const map={volume:d?.volume||0,tlu:d?.tlu||0,total_tlu:w.total,sets:d?.sets||0,light:t.byIntensity.light||0,medium:t.byIntensity.medium||0,max:t.byIntensity.max||0};return map[metric]??null;}
   if(snapshot.domain==='hitting'){const map={volume:d?.volume||0,sets:d?.sets||0,total_tlu:w.total};return map[metric]??(t.byType[metric]??null);}
-  if(snapshot.domain==='defense'){const map={volume:d?.volume||0,sets:d?.sets||0,throwCount:t.defenseThrowCount||0,tlu:d?.tlu||0,total_tlu:w.total};return map[metric]??(t.byType[metric]??null);}
+  if(snapshot.domain==='defense'){const map={volume:d?.volume||0,sets:d?.sets||0,actionReps:t.defenseActionReps||0,throwCount:t.defenseThrowCount||0,tlu:d?.tlu||0,tluPerRep:t.defenseTluPerRep,total_tlu:w.total,fieldReps:t.defenseActionCounts.field||0,receiveReps:t.defenseActionCounts.receive||0,tagReps:t.defenseActionCounts.tag||0,baseReps:t.defenseActionCounts.base||0,throwReps:t.defenseActionCounts.throw||0,coverReps:t.defenseActionCounts.cover||0,simpleSets:t.defenseSimpleSets||0,scenarioSets:t.defenseScenarioSets||0,evaluatedReps:t.defenseOutcomes.evaluated||0,targetPct:t.defenseOutcomes.targetPct==null?null:t.defenseOutcomes.targetPct*100,adjustPct:t.defenseOutcomes.adjustPct==null?null:t.defenseOutcomes.adjustPct*100,failurePct:t.defenseOutcomes.failedPct==null?null:t.defenseOutcomes.failedPct*100};return map[metric]??(t.byType[metric]??null);}
   const map={volume:d?.volume||0,sets:d?.sets||0,total_tlu:w.total};return map[metric]??(t.byType[metric]??null);
 }
 

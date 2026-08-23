@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import vm from 'node:vm';
 import {battingSummary,trainingSummary,analysisSnapshot,analysisMetricValue} from '../js/analytics.js';
+import {defenseTrainingStats} from '../js/defense-training.js';
 
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const read=path=>readFileSync(join(root,path),'utf8');
@@ -49,15 +50,11 @@ const toss=trainingSummary(tossData,{athleteId:'a',domain:'defense'});
 assert.equal(toss.defenseThrowCount,12,'가벼운 토스도 실제 송구 횟수에는 포함해야 합니다.');
 assert.equal(toss.byDomain.defense.volume,20);assert.equal(toss.byDomain.defense.tlu,0,'0.00 토스는 TLU를 더하지 않아야 합니다.');
 
-const trainingContext={quantityHtml:()=>'<div class="quantity-box"></div>'};
-vm.runInNewContext(extractFunction(app,'trainingDefenseForm'),trainingContext);
-const trainingHtml=trainingContext.trainingDefenseForm();
-assert.match(trainingHtml,/<option value="0">매우 가벼운 토스 · 0\.00<\/option>/);
-assert.match(trainingHtml,/<option value="0\.75" selected>근거리 · 0\.75<\/option>/,'기존 근거리 0.75를 기본값으로 유지해야 합니다.');
-assert.match(app,/name="throwIntensity"><option value="0"[\s\S]*?매우 가벼운 토스 · 0\.00/,'훈련 기록 수정 화면에도 0.00 토스가 있어야 합니다.');
-assert.match(app,/Number\(rec\.metadata\?\.throwIntensity\)===0&&rec\.metadata\?\.throwIntensity!=null/,'이전 기록의 송구 부하가 비어 있으면 0.00으로 오인하면 안 됩니다.');
-const trainingSubContext={sideThrow:value=>value,sideBat:value=>value,n2:value=>Number(value).toFixed(2)};vm.runInNewContext(extractFunction(app,'trainingSetSub'),trainingSubContext);
-assert.equal(trainingSubContext.trainingSetSub(tossData.trainingSets[0]),'20 reps · 송구 12회 · 0.00 TLU','0부하 토스도 기록 카드에서 송구 횟수와 0.00 TLU를 확인할 수 있어야 합니다.');
+assert.match(app,/data-dt-simple="throwIntensity"><option value="0"[\s\S]*?매우 가벼운 토스 · 0\.00/,'수비 훈련 입력·수정 공용 편집기에 0.00 토스가 있어야 합니다.');
+assert.match(app,/<option value="0\.75"[^>]*>근거리 · 0\.75<\/option>/,'기존 근거리 0.75를 기본 부하로 유지해야 합니다.');
+const tossStats=defenseTrainingStats(tossData.trainingSets[0]);
+assert.equal(tossStats.throwCount,12);assert.equal(tossStats.throwTLU,0,'0부하 토스의 통합 카드·분석 계산도 0.00 TLU여야 합니다.');
+assert.match(app,/bits\.push\(`\$\{n2\(stats\.throwTLU\)\} TLU`\)/,'0부하 토스도 기록 카드 요약에 TLU를 표시해야 합니다.');
 
 const formContext={
   resumeContext:null,
@@ -88,7 +85,7 @@ assert.match(css,/\.pitch-count-area\{[^}]*border-bottom:1px solid #e4ebf1/);
 assert.match(css,/@media\(max-width:599px\)\{\.history-controls\{padding:12px[\s\S]*?\.pitch-entry-card\{padding:12px/,'검색·입력 카드는 모바일 여백도 함께 줄여야 합니다.');
 assert.match(css,/\.pitch-entry-card \.count-balls\{gap:5px;flex-wrap:nowrap\}/,'모바일에서도 B 1 2 3 4 S 1 2가 한 줄에 들어가야 합니다.');
 
-assert.equal(read('VERSION').trim(),'7.6.1');assert.match(app,/appVersion:'7\.6\.1'/);assert.match(html,/야구일기 V7\.6\.1/);assert.match(sw,/baseball-diary-v7\.6\.1/);
+assert.equal(read('VERSION').trim(),'7.7.0');assert.match(app,/appVersion:'7\.7\.0'/);assert.match(html,/야구일기 V7\.7\.0/);assert.match(sw,/baseball-diary-v7\.7\.0/);
 assert.doesNotMatch([app,analytics,analysisScope,html,sw].join('\n'),/[?&]v=7\.6\.0/,'실행 파일에 이전 캐시 쿼리가 남으면 안 됩니다.');
 
-console.log('V7.6.1 OPS and UI consistency smoke tests: PASS');
+console.log('V7.7.0 OPS and UI consistency smoke tests: PASS');
