@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-title" content="야구일기" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>야구일기 · 나의 야구 기록장</title>
-  <link rel="manifest" href="manifest.webmanifest?v=7.6.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=7.6.1" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192-v7.1.0.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192-v7.1.0.png" />
-  <link rel="stylesheet" href="styles.css?v=7.6.0" />
+  <link rel="stylesheet" href="styles.css?v=7.6.1" />
 </head>
 <body>
 <section id="authGate" class="auth-gate" aria-live="polite">
@@ -113,7 +113,7 @@
     </section>
 
     <section class="view" data-view="analysis">
-      <div class="page-intro"><div><p class="kicker">분석 대시보드</p><h2>분석</h2></div><span class="status-note">요약 → 추이 → 세부 분석</span></div>
+      <div class="page-intro"><div><p class="kicker">ANALYSIS DASHBOARD</p><h2>분석</h2></div><span class="status-note">요약 → 추이 → 세부 분석</span></div>
       <section class="analysis-controls">
         <div class="analysis-context-row">
           <div id="analysisSourceTabs" class="segmented-control analysis-source-tabs"><button class="active" data-analysis-source="game">경기 성과</button><button data-analysis-source="training">훈련 · 워크로드</button></div>
@@ -148,7 +148,7 @@
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.6.0</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.6.1</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge synced">동기화됨</span></div><div id="cloudLoggedIn" class="cloud-box cloud-account-box"><div class="cloud-account-head"><span class="cloud-account-icon" aria-hidden="true">☁</span><div><small>로그인 계정</small><b id="cloudUserEmail"></b></div></div><p id="cloudStatusText">계정 전용 저장공간을 사용 중입니다.</p><div class="cloud-sync-meta"><small id="cloudPendingCount" class="muted"></small><small id="cloudLastSync" class="muted"></small></div><div class="cloud-main-actions"><button id="syncNowBtn" class="primary-btn full" type="button"><span aria-hidden="true">↻</span><b>지금 동기화</b></button><button id="signOutBtn" class="soft-btn full" type="button"><span aria-hidden="true">↪</span><b>로그아웃</b></button></div><button id="signOutClearBtn" class="danger-ghost full" type="button">로그아웃하고 이 기기 캐시 삭제</button></div></section>
@@ -178,8 +178,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="vendor/supabase-2.112.3.min.js?v=7.6.0"></script>
-<script src="supabase-config.js?v=7.6.0"></script>
+<script src="vendor/supabase-2.112.3.min.js?v=7.6.1"></script>
+<script src="supabase-config.js?v=7.6.1"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -197,6 +197,6 @@ window.clearBaseballTrackerCache=async function(){
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=7.6.0" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=7.6.1" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>

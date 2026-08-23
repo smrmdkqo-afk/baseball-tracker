@@ -1,4 +1,4 @@
-import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary} from './defense.js?v=7.6.0';
+import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary} from './defense.js?v=7.6.1';
 
 export const OFFICIAL_PITCH_TYPES=new Set(['ball','called','swinging','foul','inplay','hbp']);
 export const STRIKE_PITCH_TYPES=new Set(['called','swinging','foul','inplay']);
@@ -127,7 +127,7 @@ export function battingSummary(data,{athleteId,date=null,from=null,to=null,gameD
   const events=allEvents.filter(e=>eventMatchesSides(e,maps.pa.get(e.parentId),{batterSide,pitcherSide}));
   const counts={};for(const p of completed)counts[p.result]=(counts[p.result]||0)+1;
   const H=(counts['1B']||0)+(counts['2B']||0)+(counts['3B']||0)+(counts.HR||0),BB=counts.BB||0,HBP=counts.HBP||0,SF=counts.SF||0,SH=counts.SH||0,SO=counts.SO||0,ROE=counts.ROE||0,HR=counts.HR||0;
-  const AB=completed.length-BB-HBP-SF-SH,TB=(counts['1B']||0)+2*(counts['2B']||0)+3*(counts['3B']||0)+4*HR,AVG=pct(H,AB),OBP=pct(H+BB+HBP,AB+BB+HBP+SF),SLG=pct(TB,AB),OPS=OBP==null||SLG==null?null:OBP+SLG,ISO=AVG==null||SLG==null?null:SLG-AVG;
+  const AB=completed.length-BB-HBP-SF-SH,TB=(counts['1B']||0)+2*(counts['2B']||0)+3*(counts['3B']||0)+4*HR,AVG=pct(H,AB),OBP=pct(H+BB+HBP,AB+BB+HBP+SF),SLG=AB?TB/AB:(completed.length?0:null),OPS=OBP==null?null:OBP+SLG,ISO=AVG==null||SLG==null?null:SLG-AVG;
   const babipDen=AB-SO-HR+SF,BABIP=pct(H-HR,babipDen);
   const swingTypes=new Set(['swinging_strike','foul','in_play']),swings=events.filter(e=>swingTypes.has(e.eventType)),whiffs=events.filter(e=>e.eventType==='swinging_strike'),contacts=events.filter(e=>['foul','in_play'].includes(e.eventType));
   const takenBalls=events.filter(e=>e.eventType==='taken_ball').length,takenStrikes=events.filter(e=>e.eventType==='taken_strike').length,totalPitches=events.length;

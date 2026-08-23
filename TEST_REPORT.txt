@@ -1,10 +1,11 @@
-야구일기 V7.6.0 - Test Report
+야구일기 V7.6.1 - Test Report
 Date: 2026-08-23
 
 결과 요약
 - V7.4 기존 기능 회귀 스모크 테스트 PASS
 - V7.5 순차 수비 회귀 스모크 테스트 PASS
 - V7.6 직접 아웃 동작 전용 스모크 테스트 PASS
+- V7.6.1 OPS·훈련·UI 일관성 스모크 테스트 PASS
 - JavaScript 문법 검사 PASS
 - 버전·PWA 캐시 정합성 PASS
 - git diff 공백 오류 검사 PASS
@@ -13,6 +14,7 @@ Date: 2026-08-23
 - node tests/v7.4-smoke.mjs
 - node tests/v7.5-defense-smoke.mjs
 - node tests/v7.6-defense-out-actions-smoke.mjs
+- node tests/v7.6.1-ops-ui-smoke.mjs
 - node --check js/app.js
 - node --check js/analytics.js
 - node --check js/defense.js
@@ -20,6 +22,17 @@ Date: 2026-08-23
 - node --check js/storage.js
 - node --check sw.js
 - git diff --check
+
+V7.6.1 추가 검증
+PASS - 1타석 1볼넷: PA=1, AB=0, OBP=1.000, SLG=.000, OPS=1.000
+PASS - 1사구·1안타·희생플라이·빈 데이터의 OPS 경계값 회귀 확인
+PASS - 수비 훈련 0.00 토스의 송구 횟수 보존과 TLU 0 계산
+PASS - 신규 입력·기록 수정에 동일한 0.00 토스 선택지 제공
+PASS - 0부하 토스를 기록 카드에서 송구 횟수·0.00 TLU로 구분
+PASS - 분석 영문 상단 제목과 한글 제목 구조 통일
+PASS - 기록 검색 조건의 분석형 외곽 카드 적용
+PASS - 경기 투구·타격의 B/S 카운트와 결과 버튼을 동일 카드에 배치
+PASS - 결과 미상·강판·ARM LOAD 보조 동작을 결과 카드 밖에 유지
 
 1. 직접 아웃 데이터 모델
 PASS - 주자 태그와 베이스 터치를 반복 가능한 독립 동작으로 저장
@@ -62,8 +75,8 @@ PASS - 투구·타격·도루 공통 카드·수정·삭제 구조 유지
 PASS - 여러 송구 TLU 합산과 수신 평가 제외 계산 유지
 PASS - 수비 기록 검색의 기존 조건과 공식 지표 유지
 PASS - 과거 미완료·결과 미상·강판 중단·자정 전환 동작 유지
-PASS - VERSION=7.6.0, 백업 appVersion=7.6.0
-PASS - Service Worker cache=baseball-diary-v7.6.0
+PASS - VERSION=7.6.1, 백업 appVersion=7.6.1
+PASS - Service Worker cache=baseball-diary-v7.6.1
 
 실기기·실서버에서 최종 확인할 항목
 - 실제 데이터 계정에서 모바일·태블릿·PC 가로/세로 줄바꿈과 스크롤
@@ -77,4 +90,4 @@ PASS - Service Worker cache=baseball-diary-v7.6.0
 - 반응형 검증은 생성 HTML, 상태별 DOM 구조, CSS 미디어 쿼리, 터치 높이와 자동 스모크 테스트로 수행했습니다.
 
 결론
-V7.6.0 직접 아웃 동작의 코드·검색·분석·반응형 구조 자동 검증은 통과했습니다. 신규 Supabase SQL은 필요하지 않습니다.
+V7.6.1의 OPS 경계값, 0부하 토스, 카드 UI 일관성과 기존 V7.4~V7.6 기능 회귀 자동 검증은 통과했습니다. 신규 Supabase SQL은 필요하지 않습니다.

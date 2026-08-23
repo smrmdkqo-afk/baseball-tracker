@@ -143,3 +143,14 @@
 @media(max-width:599px){.parent-card{--record-result-width:50px}.parent-toggle{grid-template-columns:var(--record-result-width) minmax(0,1fr) 30px;gap:7px;padding:10px 9px}.parent-toggle .chev{width:30px;height:30px}.result-badge{width:100%;min-height:36px;padding:6px 3px;font-size:9px}.defense-detail-grid{grid-template-columns:1fr 1fr}.parent-actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.parent-action{width:100%;min-height:42px;padding:7px 5px}.parent-card-foot.actions-only{width:100%;align-items:stretch}}
 @media(pointer:coarse){.parent-action{min-height:44px}}
 @media(hover:hover){.parent-toggle:hover{background:#fbfdff}.parent-toggle:hover .chev{background:#e7eef4;color:#315d82}.parent-action:not(.danger):not(.primary):hover{border-color:#a9bdcd;background:#f6f9fb}.parent-action.danger:hover{background:var(--red2)}}
+
+/* V7.6.1 — OPS edge case and shared input/filter card shells */
+.history-controls{padding:18px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);gap:14px}
+.pitch-entry-card{border:1px solid #d7e5f1;border-radius:17px;background:linear-gradient(180deg,#fff,#f8fbfd);padding:15px 16px 16px;box-shadow:0 7px 22px rgba(22,54,82,.05),inset 0 1px 0 rgba(255,255,255,.92)}
+.pitch-count-area{margin-bottom:12px;padding:0 1px 12px;border-bottom:1px solid #e4ebf1}
+.pitch-entry-card .count-balls{margin:0}
+.pitch-entry-card .count-hint{margin:7px 0 0}
+.pitch-entry-card .pitch-main{margin-bottom:0}
+
+@media(max-width:599px){.history-controls{padding:12px;gap:10px;border-radius:16px}.pitch-entry-card{padding:12px;border-radius:14px}.pitch-count-area{margin-bottom:10px;padding-bottom:10px}.pitch-entry-card .count-balls{gap:5px;flex-wrap:nowrap}.pitch-entry-card .count-dot{width:28px;height:28px}.pitch-entry-card .strike-label{margin-left:5px}}
+@media(orientation:landscape) and (max-height:520px) and (max-width:950px){.history-controls{padding:10px}}
