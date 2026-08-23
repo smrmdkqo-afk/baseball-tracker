@@ -1,5 +1,5 @@
-export const DEFENSE_VERSION=2;
-export const DEFENSE_ACTION_TYPES=['field','receive','throw','cover'];
+export const DEFENSE_VERSION=3;
+export const DEFENSE_ACTION_TYPES=['field','receive','tag','base','throw','cover'];
 
 const copy=value=>JSON.parse(JSON.stringify(value));
 const valueOrNull=value=>value===undefined||value===''?null:value;
@@ -15,6 +15,8 @@ export function newDefenseAction(type,id=null){
   if(type==='field')return {...base,battedBall:null,difficulty:null,reach:null,result:null,fieldingType:null,direction:null,judgment:{...base.judgment,reaction:null,route:null}};
   if(type==='throw')return {...base,target:null,quality:null,missDirection:null,timing:null,tlu:.85,distance:null,velocity:null,judgment:{...base.judgment,bestChoice:null}};
   if(type==='receive')return {...base,target:null,incoming:null,result:null,technique:null,judgment:{...base.judgment,positioning:null,nextReady:null}};
+  if(type==='tag')return {...base,targetRunner:null,execution:null,timing:null,call:null,judgment:{...base.judgment,bestChoice:null}};
+  if(type==='base')return {...base,base:null,purpose:null,execution:null,timing:null,call:null,judgment:{...base.judgment,bestChoice:null}};
   return {...base,role:null,timing:null,result:null,judgment:{...base.judgment,communication:null}};
 }
 
@@ -24,7 +26,7 @@ export function newDefenseDraft({position='SS',throwSide=null}={}){
 
 function normalizeJudgment(raw={}){
   const judgment={
-    rating:enumOrNull(raw.rating,['best','acceptable','wrong']),source:enumOrNull(raw.source,['self','coach','video']),note:textOrNull(raw.note,300),reaction:enumOrNull(raw.reaction,['good','normal','late','wrong']),route:enumOrNull(raw.route,['direct','adjusted','inefficient','na']),bestChoice:enumOrNull(raw.bestChoice,['hold','1B','2B','3B','HOME','RELAY']),positioning:enumOrNull(raw.positioning,['correct','late','wrong']),nextReady:enumOrNull(raw.nextReady,['ready','late','na']),communication:enumOrNull(raw.communication,['good','late','missed','na'])
+    rating:enumOrNull(raw.rating,['best','acceptable','wrong']),source:enumOrNull(raw.source,['self','coach','video']),note:textOrNull(raw.note,300),reaction:enumOrNull(raw.reaction,['good','normal','late','wrong']),route:enumOrNull(raw.route,['direct','adjusted','inefficient','na']),bestChoice:enumOrNull(raw.bestChoice,['hold','TAG','1B','2B','3B','HOME','RELAY']),positioning:enumOrNull(raw.positioning,['correct','late','wrong']),nextReady:enumOrNull(raw.nextReady,['ready','late','na']),communication:enumOrNull(raw.communication,['good','late','missed','na'])
   };
   return judgment.rating?judgment:{rating:null,source:null,note:null,reaction:null,route:null,bestChoice:null,positioning:null,nextReady:null,communication:null};
 }
@@ -39,6 +41,10 @@ function normalizeAction(raw,index){
     action.target=enumOrNull(source.target,['1B','2B','3B','HOME','RELAY','OTHER']);action.incoming=enumOrNull(source.incoming,['on_target','high','low','wide','bounce','uncatchable']);action.result=enumOrNull(source.result,['clean','recovered','failed','excluded']);action.technique=enumOrNull(source.technique,['normal','stretch','scoop','tag','block','base_hold']);
     if(action.incoming==='uncatchable')action.result='excluded';
     else if(action.result==='excluded')action.result=null;
+  }else if(type==='tag'){
+    action.targetRunner=enumOrNull(source.targetRunner,['BR','R1','R2','R3','UNKNOWN']);action.execution=enumOrNull(source.execution,['clean','recovered','missed','dropped']);action.timing=enumOrNull(source.timing,['early','close','late','na']);action.call=enumOrNull(source.call,['out','safe','no_call']);
+  }else if(type==='base'){
+    action.base=enumOrNull(source.base,['1B','2B','3B','HOME']);action.purpose=enumOrNull(source.purpose,['force','appeal','other']);action.execution=enumOrNull(source.execution,['secure','off_base','missed']);action.timing=enumOrNull(source.timing,['early','close','late','na']);action.call=enumOrNull(source.call,['out','safe','no_call']);
   }else{
     action.role=enumOrNull(source.role,['base_cover','backup','cutoff','communication']);action.timing=enumOrNull(source.timing,['on_time','late','missed']);action.result=enumOrNull(source.result,['correct','recovered','failed']);
   }
@@ -59,12 +65,12 @@ function legacyDraft(metadata={}){
 }
 
 export function normalizeDefenseMetadata(metadata={}){
-  if(!Array.isArray(metadata.actions)||Number(metadata.defenseVersion||0)<DEFENSE_VERSION)return legacyDraft(metadata);
+  if(!Array.isArray(metadata.actions)||Number(metadata.defenseVersion||0)<2)return legacyDraft(metadata);
   const runners=Array.isArray(metadata.situation?.runners)?metadata.situation.runners.filter(x=>['1B','2B','3B'].includes(x)):[];
   const seenIds=new Set(),actions=metadata.actions.map((raw,index)=>{const action=normalizeAction(raw,index);let id=action.id,suffix=2;while(seenIds.has(id))id=`${actionId(index,action.type)}-${suffix++}`;action.id=id;seenIds.add(id);return action;});
   const outcome=enumOrNull(metadata.outcome,['out','safe','continue']),outsRecorded=numberOrNull(metadata.outsRecorded),situationOuts=numberOrNull(metadata.situation?.outs);
   return {
-    defenseVersion:DEFENSE_VERSION,position:normalizePosition(metadata.position),actions,flowEnded:metadata.flowEnded!==false,outcome,outMethod:outcome==='out'?enumOrNull(metadata.outMethod,['catch','tag','base','throw']):null,outsRecorded:outcome==='out'&&[1,2,3].includes(outsRecorded)?outsRecorded:null,official:normalizeOfficial(metadata.official),situation:{outs:[0,1,2].includes(situationOuts)?situationOuts:null,runners:[...new Set(runners)]},note:textOrNull(metadata.note),throwSide:enumOrNull(metadata.throwSide,['R','L']),legacy:false
+    defenseVersion:DEFENSE_VERSION,position:normalizePosition(metadata.position),actions,flowEnded:metadata.flowEnded!==false,outcome,outMethod:outcome==='out'?enumOrNull(metadata.outMethod,['catch','tag','base','throw']):null,outsRecorded:outcome==='out'&&[1,2,3].includes(outsRecorded)?outsRecorded:null,official:normalizeOfficial(metadata.official),situation:{outs:[0,1,2].includes(situationOuts)?situationOuts:null,runners:[...new Set(runners)]},note:textOrNull(metadata.note),throwSide:enumOrNull(metadata.throwSide,['R','L']),legacy:metadata.legacy===true
   };
 }
 
@@ -85,16 +91,18 @@ export function defenseMissingFields(input){
     if(action.type==='field'){add('battedBall','타구');add('difficulty','난도');add('reach','도달');if(action.reach!=='not_reached')add('result','처리 결과');}
     else if(action.type==='throw'){add('target','송구 목적지');add('quality','송구 품질');add('timing','송구 타이밍');}
     else if(action.type==='receive'){add('target','수신 위치');add('incoming','들어온 송구');if(action.incoming!=='uncatchable')add('result','수신 결과');}
+    else if(action.type==='tag'){add('execution','태그 실행');add('timing','태그 타이밍');add('call','태그 판정');}
+    else if(action.type==='base'){add('base','터치 베이스');add('execution','베이스 접촉');add('timing','베이스 타이밍');add('call','베이스 판정');}
     else {add('role','커버 역할');add('timing','도착 시점');add('result','커버 결과');}
   });
   if(!draft.flowEnded)missing.push({scope:'play',field:'flowEnded',label:'플레이 종료'});
   if(draft.flowEnded&&!draft.outcome)missing.push({scope:'play',field:'outcome',label:'플레이 결과'});
-  if(draft.outcome==='out'){if(!draft.outMethod)missing.push({scope:'play',field:'outMethod',label:'아웃 방식'});if(!draft.outsRecorded)missing.push({scope:'play',field:'outsRecorded',label:'아웃 수'});}
+  if(draft.outcome==='out'){const hasDirectOut=draft.actions.some(action=>['tag','base'].includes(action.type)&&action.call==='out');if(!draft.outMethod&&!hasDirectOut)missing.push({scope:'play',field:'outMethod',label:'아웃 방식'});if(!draft.outsRecorded)missing.push({scope:'play',field:'outsRecorded',label:'아웃 수'});}
   return missing;
 }
 
-export function defenseActionLabel(type){return {field:'타구 처리',throw:'송구',receive:'송구 받기',cover:'커버·백업'}[type]||'수비 동작';}
-export function defenseActionShortLabel(type){return {field:'처리',throw:'송구',receive:'수신',cover:'커버'}[type]||'수비';}
+export function defenseActionLabel(type){return {field:'타구 처리',throw:'송구',receive:'송구 받기',tag:'주자 태그',base:'베이스 터치',cover:'커버·백업'}[type]||'수비 동작';}
+export function defenseActionShortLabel(type){return {field:'처리',throw:'송구',receive:'수신',tag:'태그',base:'베이스',cover:'커버'}[type]||'수비';}
 
 export function defenseActionStatus(action){
   if(!action)return {key:'missing',tone:'unstable',label:'결과 미입력'};
@@ -104,7 +112,31 @@ export function defenseActionStatus(action){
   }
   if(action.type==='throw')return action.quality==='accurate'?{key:'success',tone:'success',label:'송구 정확'}:action.quality==='catchable'?{key:'recovered',tone:'unstable',label:'송구 가능'}:action.quality==='uncatchable'?{key:'failed',tone:'failed',label:'송구 불가'}:{key:'missing',tone:'unstable',label:'송구 미입력'};
   if(action.type==='receive')return action.result==='clean'?{key:'success',tone:'success',label:'수신 성공'}:action.result==='recovered'?{key:'recovered',tone:'unstable',label:'수신 보완'}:action.result==='failed'?{key:'failed',tone:'failed',label:'수신 실패'}:action.result==='excluded'?{key:'excluded',tone:'none',label:'평가 제외'}:{key:'missing',tone:'unstable',label:'수신 미입력'};
+  if(action.type==='tag'){
+    if(!action.execution||!action.timing||!action.call)return {key:'missing',tone:'unstable',label:'태그 미입력'};
+    if(action.execution==='missed')return {key:'failed',tone:'failed',label:'태그 빗나감'};if(action.execution==='dropped')return {key:'failed',tone:'failed',label:'태그 중 공 빠짐'};if(action.call==='no_call')return {key:'excluded',tone:'none',label:'태그 판정 없음'};if(action.call==='safe')return {key:'recovered',tone:'unstable',label:action.timing==='late'?'태그 늦음':'태그 세이프'};if(action.execution==='recovered'||action.timing==='late')return {key:'recovered',tone:'unstable',label:action.timing==='late'?'태그 늦음':'태그 보완'};return {key:'success',tone:'success',label:'태그 아웃'};
+  }
+  if(action.type==='base'){
+    if(!action.base||!action.execution||!action.timing||!action.call)return {key:'missing',tone:'unstable',label:'베이스 미입력'};
+    if(action.execution==='off_base')return {key:'failed',tone:'failed',label:'베이스 이탈'};if(action.execution==='missed')return {key:'failed',tone:'failed',label:'베이스 미접촉'};if(action.call==='no_call')return {key:'excluded',tone:'none',label:'베이스 판정 없음'};if(action.call==='safe')return {key:'recovered',tone:'unstable',label:action.timing==='late'?'베이스 늦음':'베이스 세이프'};if(action.timing==='late')return {key:'recovered',tone:'unstable',label:'베이스 늦음'};return {key:'success',tone:'success',label:'베이스 아웃'};
+  }
   return action.result==='correct'?{key:'success',tone:'success',label:'커버 성공'}:action.result==='recovered'?{key:'recovered',tone:'unstable',label:'커버 보완'}:action.result==='failed'?{key:'failed',tone:'failed',label:'커버 실패'}:{key:'missing',tone:'unstable',label:'커버 미입력'};
+}
+
+export function defenseFlowWarnings(input){
+  const draft=normalizeDefenseMetadata(input),warnings=[];let hasBall=false;
+  draft.actions.forEach((action,index)=>{
+    const needsBall=['throw','tag','base'].includes(action.type);if(index===0&&needsBall)hasBall=true;
+    if(needsBall&&!hasBall)warnings.push({scope:'action',actionId:action.id,index,label:`${index+1}단계 ${defenseActionLabel(action.type)} 전에 공을 확보한 동작이 없습니다.`});
+    if(action.type==='field')hasBall=action.reach==='not_reached'||action.result==='failed'?false:['clean','recovered'].includes(action.result)?true:null;
+    else if(action.type==='receive')hasBall=['clean','recovered'].includes(action.result)?true:['failed','excluded'].includes(action.result)?false:null;
+    else if(action.type==='tag')hasBall=action.execution==='dropped'?false:['clean','recovered','missed'].includes(action.execution)?true:null;
+    else if(action.type==='throw')hasBall=false;
+  });
+  const directOuts=draft.actions.filter(action=>['tag','base'].includes(action.type)&&action.call==='out').length;
+  if(directOuts&&draft.outcome==='safe')warnings.push({scope:'play',field:'outcome',label:'동작에는 아웃 판정이 있지만 플레이 결과가 세이프입니다.'});
+  if(directOuts&&draft.outsRecorded&&directOuts>draft.outsRecorded)warnings.push({scope:'play',field:'outsRecorded',label:'직접 기록한 아웃보다 전체 아웃 수가 적습니다.'});
+  return warnings;
 }
 
 export function defenseCardStatuses(input,limit=2){
@@ -133,6 +165,6 @@ export function defenseJudgmentSummary(input){
 }
 
 export function defenseOfficialRecommendation(input){
-  const draft=normalizeDefenseMetadata(input);if(draft.outcome!=='out')return '공식 기록 추천 없음';const types=draft.actions.map(x=>x.type),outs=Number(draft.outsRecorded)||1,values=[];
-  if(types.includes('receive')||types.includes('field')&&['catch','tag','base'].includes(draft.outMethod))values.push('PO');if(types.includes('throw'))values.push('A');if(outs>=2)values.push('DP');return values.length?`추천: ${[...new Set(values)].join(' + ')}`:'공식 기록 추천 없음';
+  const draft=normalizeDefenseMetadata(input),directOut=draft.actions.some(action=>['tag','base'].includes(action.type)&&action.call==='out');if(draft.outcome!=='out'&&!directOut)return '공식 기록 추천 없음';const types=draft.actions.map(x=>x.type),outs=Number(draft.outsRecorded)||1,values=[];
+  if(directOut||types.includes('receive')&&draft.outcome==='out'||types.includes('field')&&draft.outcome==='out'&&['catch','tag','base'].includes(draft.outMethod))values.push('PO');if(types.includes('throw')&&draft.outcome==='out')values.push('A');if(outs>=2)values.push('DP');return values.length?`추천: ${[...new Set(values)].join(' + ')}`:'공식 기록 추천 없음';
 }

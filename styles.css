@@ -74,6 +74,22 @@
 @media(max-width:599px){.defense-context-card{grid-template-columns:1fr;padding:12px}.defense-context-card p{font-size:10px}.defense-choice-grid,.defense-choice-grid.dense{grid-template-columns:1fr 1fr;gap:6px}.defense-choice{min-height:47px;padding:7px 4px}.defense-action-chooser{padding:12px}.defense-action-chooser>div:first-child{align-items:flex-start;flex-direction:column;gap:2px}.defense-action-type-grid button{min-height:78px}.defense-step-head{grid-template-columns:31px minmax(0,1fr) 27px;gap:7px;padding:9px 8px}.defense-step-number{width:30px;height:30px}.defense-step-head em{grid-column:2;justify-self:start;padding:4px 6px}.defense-step-head>i{grid-column:3;grid-row:1/3}.defense-step-body{padding:12px}.defense-step-tools{grid-template-columns:1fr 1fr}.defense-step-tools button.danger{grid-column:1/-1}.defense-flow-actions{grid-template-columns:1fr 1fr}.defense-outcome{padding:12px}.defense-official-grid{grid-template-columns:repeat(4,1fr)}.defense-record-step{padding:9px}.defense-record-step .defense-detail-grid{grid-template-columns:1fr 1fr}.defense-result-stack .defense-result{font-size:8px}.defense-card .parent-ident small{font-size:8.5px}}
 @media(pointer:coarse){.defense-choice,.defense-action-type-grid button,.defense-flow-actions button,.defense-step-tools button,.defense-insert-action,.defense-official-state button,.defense-official-chip,.defense-edit-actions button{min-height:48px}}
 @media(hover:hover){.defense-choice:not(.active):hover,.defense-action-type-grid button:hover{border-color:#9dbbd0;background:#f7fafc}.defense-choice.active:hover{filter:brightness(.97)}.defense-action-type-grid button:hover>span{background:#dcebf6}.defense-step-head:hover{background:#fbfdff}}
+
+/* V7.6.0 — direct-out actions */
+.defense-action-type-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.defense-action-type-grid button[data-defense-add-type="tag"]>span{background:#edf0fb;color:#4c5f9d}
+.defense-action-type-grid button[data-defense-add-type="base"]>span{background:#edf8f5;color:#16745d}
+.defense-choice.active[data-defense-value="secure"],.defense-choice.active[data-defense-value="out"],.defense-choice.active[data-defense-value="early"],.defense-choice.active[data-defense-value="close"]{border-color:#0d8a63;background:#0d8a63}
+.defense-choice.active[data-defense-value="safe"]{border-color:#b17608;background:#b17608}
+.defense-choice.active[data-defense-value="off_base"],.defense-choice.active[data-defense-value="dropped"]{border-color:#b33b47;background:#b33b47}
+.defense-connection-warning{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:8px;border-top:1px solid #f0dfb7;background:#fff9eb;padding:8px 12px;color:#7d641f}
+.defense-connection-warning>span{width:22px;height:22px;border-radius:50%;background:#b47a09;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:950}
+.defense-connection-warning p{margin:0;font-size:9px;font-weight:850;line-height:1.45}
+.defense-derived.out-summary{border-color:#bcded4;background:#f0faf7}
+.defense-derived.out-summary span{color:#47776b}
+.defense-derived.out-summary b{color:#136e57}
+@media(max-width:780px){.defense-action-type-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:599px){.defense-action-type-grid{gap:7px}.defense-action-type-grid button{min-height:76px}.defense-connection-warning{padding:8px 10px}}
 .defense-teammate-bridge,.defense-record-bridge{align-self:center;border-radius:999px;background:#edf3f7;color:#667e91;padding:5px 10px;text-align:center;font-size:8px;font-weight:900}.defense-teammate-bridge span,.defense-teammate-bridge small{display:block}.defense-teammate-bridge small{margin-top:2px;font-size:7px;font-weight:750}.defense-record-bridge{margin:0 auto;padding:4px 9px}
 
 /* V7.2.0 — pitch-level matchup context and pitching exit */
