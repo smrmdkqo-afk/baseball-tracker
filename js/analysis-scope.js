@@ -1,4 +1,4 @@
-import {dateShift} from './analytics.js?v=7.7.0';
+import {dateShift} from './analytics.js?v=7.8.0';
 
 const DATE_KEY=/^\d{4}-\d{2}-\d{2}$/;
 

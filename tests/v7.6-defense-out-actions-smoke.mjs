@@ -14,7 +14,8 @@ import {
   defenseFlowWarnings,
   defenseActionLabel,
   defenseActionStatus,
-  defenseOfficialRecommendation
+  defenseOfficialRecommendation,
+  defenseThrowQuality
 } from '../js/defense.js';
 import {defenseSummary,analysisSnapshot,analysisMetricValue} from '../js/analytics.js';
 
@@ -34,19 +35,19 @@ function extractFunction(source,name){
   throw new Error(`${name} 함수 끝을 찾지 못했습니다.`);
 }
 
-assert.equal(DEFENSE_VERSION,3);
+assert.equal(DEFENSE_VERSION,4);
 assert.deepEqual(DEFENSE_ACTION_TYPES,['field','receive','tag','base','throw','cover']);
 assert.equal(defenseActionLabel('tag'),'주자 태그');
 assert.equal(defenseActionLabel('base'),'베이스 터치');
 
 const makeDraft=({misses=false}={})=>{
   const draft=newDefenseDraft({position:'2B',throwSide:'R'});
-  const field=newDefenseAction('field',`field-${misses?'b':'a'}`);Object.assign(field,{battedBall:'GB',difficulty:'normal',reach:'easy',result:'clean'});
+  const field=newDefenseAction('field',`field-${misses?'b':'a'}`);Object.assign(field,{battedBall:'GB',direction:'C',speed:'medium',fieldingType:'FRONT',result:'clean'});
   const tag=newDefenseAction('tag',`tag-${misses?'b':'a'}`);Object.assign(tag,{targetRunner:'R1',execution:misses?'missed':'clean',timing:misses?'late':'early',call:misses?'safe':'out'});
-  const throwing=newDefenseAction('throw',`throw-${misses?'b':'a'}`);Object.assign(throwing,{target:'2B',quality:'accurate',timing:'on_time',tlu:.85});
-  const receive=newDefenseAction('receive',`receive-${misses?'b':'a'}`);Object.assign(receive,{target:'2B',incoming:'on_target',result:'clean'});
+  const throwing=newDefenseAction('throw',`throw-${misses?'b':'a'}`);Object.assign(throwing,{target:'2B',accuracy:'accurate',tlu:.85});
+  const receive=newDefenseAction('receive',`receive-${misses?'b':'a'}`);Object.assign(receive,{target:'2B',sourcePosition:'SS',incoming:'on_target',technique:'normal',result:'clean'});
   const base=newDefenseAction('base',`base-${misses?'b':'a'}`);Object.assign(base,{base:'2B',purpose:'force',execution:misses?'off_base':'secure',timing:misses?'late':'close',call:misses?'safe':'out'});
-  draft.actions=[field,tag,throwing,receive,base];draft.flowEnded=true;draft.outcome=misses?'safe':'out';draft.outsRecorded=misses?null:2;draft.official=misses?{status:'none',po:false,a:false,e:false,dp:false}:{status:'entered',po:true,a:true,e:false,dp:true};
+  draft.actions=[field,tag,throwing,receive,base];draft.flowEnded=true;draft.outsRecorded=misses?0:2;draft.runnersAfter=misses?['1B']:[];draft.official=misses?{status:'none',po:false,a:false,e:false,dp:false}:{status:'entered',po:true,a:true,e:false,dp:true};
   return serializeDefenseDraft(draft);
 };
 
@@ -59,25 +60,26 @@ assert.equal(defenseActionStatus(directOut.actions[4]).label,'베이스 아웃')
 assert.match(defenseOfficialRecommendation(directOut),/PO/);
 assert.match(defenseOfficialRecommendation(directOut),/DP/);
 
-const noCall={...newDefenseDraft(),actions:[{...newDefenseAction('tag','tag-no-call'),execution:'clean',timing:'na',call:'no_call'}],flowEnded:true,outcome:'continue'};
+const noCall={...newDefenseDraft(),actions:[{...newDefenseAction('tag','tag-no-call'),targetRunner:'R1',execution:'clean',timing:'na',call:'no_call'}],flowEnded:true,outsRecorded:0,runnersAfter:[],official:{status:'none',po:false,a:false,e:false,dp:false}};
 assert.equal(defenseMissingFields(noCall).length,0,'판정 없음은 미입력과 별도 완료 상태여야 합니다.');
 assert.equal(defenseActionStatus(noCall.actions[0]).tone,'none');
 const noCallSummary=defenseSummary({gameEvents:[{id:'no-call-event',athleteId:'a',domain:'defense',eventType:'fielding_play',activityDate:'2026-08-23',parentType:null,parentId:null,deletedAt:null,metadata:serializeDefenseDraft(noCall)}],batterFaced:[],plateAppearances:[],athletes:[{id:'a',throws:'R'}],gameDays:[],trainingSets:[]},{athleteId:'a'});
 assert.equal(noCallSummary.tagOutPct,null,'판정 없음은 태그 아웃률 분모에 포함하면 안 됩니다.');
 assert.equal(noCallSummary.tagContactPct,1,'판정 없음이어도 입력된 태그 실행은 기술 지표에 포함해야 합니다.');
 
-const brokenFlow={...newDefenseDraft(),actions:[{...newDefenseAction('throw','throw-first'),target:'1B',quality:'accurate',timing:'on_time'},{...newDefenseAction('tag','tag-after-throw'),execution:'clean',timing:'close',call:'out'}],flowEnded:true,outcome:'out',outsRecorded:1};
+const brokenFlow={...newDefenseDraft(),actions:[{...newDefenseAction('throw','throw-first'),target:'1B',accuracy:'accurate'},{...newDefenseAction('tag','tag-after-throw'),targetRunner:'R1',execution:'clean',timing:'close',call:'out'}],flowEnded:true,outsRecorded:1,runnersAfter:[],official:{status:'none'}};
 assert.ok(defenseFlowWarnings(brokenFlow).some(item=>item.actionId==='tag-after-throw'),'송구 후 재수신 없이 태그하면 연결 경고를 표시해야 합니다.');
-const droppedFlow={...newDefenseDraft(),actions:[{...newDefenseAction('tag','tag-dropped'),execution:'dropped',timing:'close',call:'safe'},{...newDefenseAction('throw','throw-after-drop'),target:'1B',quality:'catchable',timing:'late'}],flowEnded:true,outcome:'safe'};
+const droppedFlow={...newDefenseDraft(),actions:[{...newDefenseAction('tag','tag-dropped'),targetRunner:'R1',execution:'dropped',timing:'close',call:'safe'},{...newDefenseAction('throw','throw-after-drop'),target:'1B',accuracy:'high'}],flowEnded:true,outsRecorded:0,runnersAfter:['1B'],official:{status:'none'}};
 assert.ok(defenseFlowWarnings(droppedFlow).some(item=>item.actionId==='throw-after-drop'),'태그 중 공이 빠진 뒤에는 다시 확보하기 전 송구할 수 없음을 알려야 합니다.');
-const firstTag={...newDefenseDraft(),actions:[{...newDefenseAction('tag','tag-first'),execution:'clean',timing:'close',call:'out'}],flowEnded:true,outcome:'out',outsRecorded:1};
+const firstTag={...newDefenseDraft(),actions:[{...newDefenseAction('tag','tag-first'),targetRunner:'R1',execution:'clean',timing:'close',call:'out'}],flowEnded:true,outsRecorded:1,runnersAfter:[],official:{status:'none'}};
 assert.ok(!defenseFlowWarnings(firstTag).some(item=>item.actionId),'플레이 시작 전에 이미 공을 가진 태그는 허용해야 합니다.');
-const outcomeConflict={...firstTag,outcome:'safe',outsRecorded:null};
-assert.ok(defenseFlowWarnings(outcomeConflict).some(item=>item.field==='outcome'),'동작 판정과 전체 결과가 충돌하면 저장을 막지 않고 확인 경고를 표시해야 합니다.');
+const outcomeConflict={...firstTag,outsRecorded:0};
+assert.ok(defenseFlowWarnings(outcomeConflict).some(item=>item.field==='outsRecorded'),'직접 아웃 수보다 전체 아웃 수가 적으면 확인 경고를 표시해야 합니다.');
 
 const v2=normalizeDefenseMetadata({defenseVersion:2,position:'SS',actions:[{id:'field-v2',type:'field',battedBall:'GB',difficulty:'routine',reach:'easy',result:'clean'}],flowEnded:true,outcome:'out',outMethod:'base',outsRecorded:1,official:{status:'missing'}});
 assert.equal(v2.legacy,false,'V7.5 순차 기록은 기존 형식으로 되돌리면 안 됩니다.');
-assert.equal(v2.defenseVersion,3,'읽을 때 현재 수비 버전으로 정규화해야 합니다.');
+assert.equal(v2.defenseVersion,4,'읽을 때 현재 수비 버전으로 정규화해야 합니다.');
+assert.equal(v2.previousFormat,true,'이전 순차 기록은 기존 형식으로 구분해야 합니다.');
 assert.equal(normalizeDefenseMetadata({position:'SS',fieldingResult:'success'}).legacy,true,'고정형 옛 기록은 기존 형식으로 유지해야 합니다.');
 
 const misses=makeDraft({misses:true}),events=[directOut,misses].map((metadata,index)=>({id:`event-${index}`,athleteId:'a',domain:'defense',eventType:'fielding_play',activityDate:'2026-08-23',parentType:null,parentId:null,deletedAt:null,metadata}));
@@ -92,7 +94,7 @@ for(const metric of ['tagContactPct','tagOutPct','baseTouchPct','outOnTimePct','
 
 const filterContext={
   ui:{historyStatus:'all',historyDefenseStatus:'all',historyDefenseAction:'all',historyFieldResult:'all',historyThrowResult:'all',historyReceiveResult:'all',historyTagResult:'all',historyBaseResult:'all',historyOfficial:'all'},
-  recordsFor:()=>events.map((event,index)=>({...event,recordedAt:`2026-08-23T10:0${index}:00Z`})),normalizeDefenseMetadata,defenseMissingFields
+  recordsFor:()=>events.map((event,index)=>({...event,recordedAt:`2026-08-23T10:0${index}:00Z`})),normalizeDefenseMetadata,defenseMissingFields,defenseThrowQuality
 };
 vm.runInNewContext(extractFunction(app,'historyDefenseEvents'),filterContext);
 filterContext.ui.historyTagResult='safe';assert.deepEqual(Array.from(filterContext.historyDefenseEvents('2026-08-23'),event=>event.id),['event-1']);
@@ -105,6 +107,6 @@ assert.match(app,/if\(action\.type==='base'\)return \[\['터치 베이스'/,'기
 assert.match(css,/\.defense-action-type-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\}/);
 assert.match(css,/@media\(max-width:780px\)\{\.defense-action-type-grid\{grid-template-columns:1fr 1fr\}\}/);
 assert.match(css,/\.defense-connection-warning/);assert.match(css,/\.defense-derived\.out-summary/);
-assert.equal(read('VERSION').trim(),'7.7.0');assert.match(html,/야구일기 V7\.7\.0/);assert.match(sw,/baseball-diary-v7\.7\.0/);
+assert.equal(read('VERSION').trim(),'7.8.0');assert.match(html,/야구일기 V7\.8\.0/);assert.match(sw,/baseball-diary-v7\.8\.0/);
 
-console.log('V7.6 direct-out defense regression tests on V7.7.0: PASS');
+console.log('V7.6 direct-out defense regression tests on V7.8.0: PASS');
