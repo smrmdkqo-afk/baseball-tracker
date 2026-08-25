@@ -40,6 +40,6 @@ for(const text of ['간단 기록','시나리오 기록','타구 처리','송구
 for(const token of ['data-dt-mode','data-dt-action-count','data-dt-open-add','data-dt-move','data-dt-outcome','data-toggle-record="training:','trainingRecordActionsHtml','openTrainingEdit','saveTrainingEdit'])assert.ok(app.includes(token),`${token} 연결이 있어야 합니다.`);
 assert.match(html,/id="trainingEditModal"[^>]*class="modal-backdrop sheet-backdrop"/);assert.match(html,/id="trainingEditEditor"/);assert.match(css,/\.defense-training-mode-tabs/);assert.match(css,/\.training-volume-preview/);assert.match(css,/\.training-card-outcomes/);assert.match(css,/\.training-volume-badge/);
 for(const metric of ['actionReps','fieldReps','receiveReps','tagReps','baseReps','throwReps','coverReps','tluPerRep','targetPct','adjustPct','failurePct'])assert.ok(app.includes(`${metric}:`)||app.includes(`'${metric}'`),`${metric} 분석 지표가 있어야 합니다.`);
-assert.match(analytics,/defenseTrainingStats/);assert.match(sw,/baseball-diary-v7\.8\.1/);assert.match(sw,/\.\/js\/defense-training\.js\?v=7\.8\.1/);assert.match(html,/js\/app\.js\?v=7\.8\.1/);assert.equal(read('VERSION').trim(),'7.8.1');
+assert.match(analytics,/defenseTrainingStats/);assert.match(sw,/baseball-diary-v7\.9\.0/);assert.match(sw,/\.\/js\/defense-training\.js\?v=7\.9\.0/);assert.match(html,/js\/app\.js\?v=7\.9\.0/);assert.equal(read('VERSION').trim(),'7.9.0');
 
 console.log('V7.7 defense training scenario tests: PASS');

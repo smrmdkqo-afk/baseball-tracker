@@ -1,4 +1,4 @@
-야구일기 V7.8.1 - Test Report
+야구일기 V7.9.0 - Test Report
 Date: 2026-08-25
 
 결과 요약
@@ -7,6 +7,7 @@ Date: 2026-08-25
 - V7.6 직접 아웃 동작 전용 스모크 테스트 PASS
 - V7.6.1 OPS·훈련·UI 일관성 스모크 테스트 PASS
 - V7.7 수비 훈련 시나리오·훈련 카드·분석 스모크 테스트 PASS
+- V7.9 공통 경기 상황 입력·기록·수정·상황별 분석 스모크 테스트 PASS
 - JavaScript 문법 검사 PASS
 - 버전·PWA 캐시 정합성 PASS
 - git diff 공백 오류 검사 PASS
@@ -17,6 +18,7 @@ Date: 2026-08-25
 - node tests/v7.6-defense-out-actions-smoke.mjs
 - node tests/v7.6.1-ops-ui-smoke.mjs
 - node tests/v7.7-defense-training-scenarios-smoke.mjs
+- node tests/v7.9-game-situation-smoke.mjs
 - node --check js/app.js
 - node --check js/analytics.js
 - node --check js/defense.js
@@ -68,6 +70,25 @@ PASS - 타구 방향·속도·방법, 수신 출발·위치·형태·방법, 송
 PASS - 시작 아웃 카운트·주자·득점권 분포와 상황별 타구 처리율·송구 수신 가능률·E 분석
 PASS - REACH%와 ON-TIME% 분석 제거
 
+V7.9.0 추가 검증
+PASS - 투구·타격의 투타 조건 아래와 주루 상단에 공통 경기 상황 UI 배치
+PASS - 수비 플레이 시작 상황에도 같은 선택 컴포넌트·색상·간격 적용
+PASS - 아웃 카운트의 미입력·0·1·2아웃을 서로 다른 값으로 유지
+PASS - 주자 상황의 미입력·주자 없음·1루·2루·3루를 서로 다른 값으로 유지
+PASS - 1루·2루·3루 버튼을 PC·태블릿·모바일에서 한 줄 3열로 유지
+PASS - 복수 베이스 선택, 마지막 베이스 해제 시 주자 없음 처리
+PASS - 별도 상황 변경 버튼과 변경 사유 입력 제거
+PASS - 투구·타격 각 공, 견제·연습투구·강판, 도루, 수비 플레이에 당시 상황 저장
+PASS - 한 타자·타석 도중 달라진 상황을 공별 스냅샷으로 독립 보존
+PASS - 백그라운드 동기화 재조회 중 저장 전 상황 선택 유지, 계정 전환 시에만 초안 초기화
+PASS - 한 공 수정·도루 수정·수비 수정에서 당시 상황 보완
+PASS - 기록 카드와 세부 공 목록에 당시 아웃·주자 상황 표시
+PASS - 투구의 아웃·주자별 Pitches·Strike%·CSW%·BF·K%·BB% 계산
+PASS - 타격의 아웃·주자별 PA·AVG·OBP·SLG·OPS·Contact% 계산
+PASS - 주루의 아웃·주자별 시도·성공·실패·SB% 계산
+PASS - 완료 BF·PA 결과를 마지막 공의 상황에 귀속
+PASS - 상황 미입력을 실패로 계산하지 않고 별도 표본으로 표시
+
 1. 직접 아웃 데이터 모델
 PASS - 주자 태그와 베이스 터치를 반복 가능한 독립 동작으로 저장
 PASS - 주자 태그의 대상·실행 결과·타이밍·심판 판정을 분리
@@ -109,9 +130,9 @@ PASS - 투구·타격·도루 공통 카드·수정·삭제 구조 유지
 PASS - 여러 송구 TLU 합산과 수신 평가 제외 계산 유지
 PASS - 수비 기록 검색의 기존 조건과 공식 지표 유지
 PASS - 과거 미완료·결과 미상·강판 중단·자정 전환 동작 유지
-PASS - VERSION=7.8.1, 백업 appVersion=7.8.1
-PASS - Service Worker cache=baseball-diary-v7.8.1
-PASS - js/defense.js?v=7.8.1과 js/defense-training.js?v=7.8.1 오프라인 CORE 캐시 포함
+PASS - VERSION=7.9.0, 백업 appVersion=7.9.0
+PASS - Service Worker cache=baseball-diary-v7.9.0
+PASS - js/defense.js?v=7.9.0과 js/defense-training.js?v=7.9.0 오프라인 CORE 캐시 포함
 
 실기기·실서버에서 최종 확인할 항목
 - 실제 데이터 계정에서 모바일·태블릿·PC 가로/세로 줄바꿈과 스크롤
@@ -125,4 +146,4 @@ PASS - js/defense.js?v=7.8.1과 js/defense-training.js?v=7.8.1 오프라인 CORE
 - 반응형 검증은 생성 HTML, 상태별 DOM 구조, CSS 미디어 쿼리, 터치 높이와 자동 스모크 테스트로 수행했습니다.
 
 결론
-V7.8.1 경기 수비 입력 정리, 기록·분석 연동, 이전 기록 호환과 기존 V7.4~V7.7 기능 회귀 자동 검증은 통과했습니다. 신규 Supabase SQL은 필요하지 않습니다.
+V7.9.0 공통 경기 상황 입력·기록·수정·상황별 분석과 기존 V7.4~V7.8 기능 회귀 자동 검증은 통과했습니다. 신규 Supabase SQL은 필요하지 않습니다.
