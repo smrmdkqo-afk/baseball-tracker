@@ -20,7 +20,7 @@ const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const read=path=>readFileSync(join(root,path),'utf8');
 const app=read('js/app.js'),css=read('styles.css'),html=read('index.html'),sw=read('sw.js');
 
-assert.equal(DEFENSE_VERSION,4);
+assert.equal(DEFENSE_VERSION,5);
 assert.equal(newDefenseDraft({position:'P'}).position,'P');
 assert.equal(newDefenseDraft({position:'C'}).position,'C');
 
@@ -73,6 +73,6 @@ assert.match(app,/\['0','매우 가벼움','0\.00 TLU'\]/);
 assert.match(app,/if\(draft\.official\?\.status==='missing'\)/);
 assert.match(css,/\.defense-official-required\{display:flex/);
 assert.match(css,/\.defense-choice-grid\.after-play\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)\}/);
-assert.equal(read('VERSION').trim(),'7.8.0');assert.match(app,/appVersion:'7\.8\.0'/);assert.match(sw,/baseball-diary-v7\.8\.0/);assert.match(sw,/\.\/js\/defense\.js\?v=7\.8\.0/);assert.match(html,/js\/app\.js\?v=7\.8\.0/);
+assert.equal(read('VERSION').trim(),'7.8.1');assert.match(app,/appVersion:'7\.8\.1'/);assert.match(sw,/baseball-diary-v7\.8\.1/);assert.match(sw,/\.\/js\/defense\.js\?v=7\.8\.1/);assert.match(html,/js\/app\.js\?v=7\.8\.1/);
 
 console.log('V7.8 defense input refinement tests: PASS');

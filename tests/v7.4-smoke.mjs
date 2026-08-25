@@ -186,10 +186,10 @@ assert.match(app,/historyOwnSide:'all'/,'본인 우·좌 상세 조건이 있어
 assert.match(app,/historyOppSide:'all'/,'상대 우·좌 상세 조건이 있어야 합니다.');
 assert.match(app,/조건 일치 \$\{matchingEventIds\.size\}\/\$\{events\.length\}구/,'공별 좌우 검색 일치 개수를 표시해야 합니다.');
 
-assert.equal(read('VERSION').trim(),'7.8.0');
-assert.match(app,/appVersion:'7\.8\.0'/);
-assert.match(sw,/baseball-diary-v7\.8\.0/);
-assert.match(html,/js\/app\.js\?v=7\.8\.0/);
+assert.equal(read('VERSION').trim(),'7.8.1');
+assert.match(app,/appVersion:'7\.8\.1'/);
+assert.match(sw,/baseball-diary-v7\.8\.1/);
+assert.match(html,/js\/app\.js\?v=7\.8\.1/);
 assert.doesNotMatch([app,analysisScope,html,sw].join('\n'),/[?&]v=7\.3\.0/,'실행 파일에 V7.3 캐시 쿼리가 남으면 안 됩니다.');
 
-console.log('V7.4 regression smoke tests on V7.8.0: PASS');
+console.log('V7.4 regression smoke tests on V7.8.1: PASS');

@@ -1,4 +1,4 @@
-export const DEFENSE_VERSION=4;
+export const DEFENSE_VERSION=5;
 export const DEFENSE_ACTION_TYPES=['field','receive','tag','base','throw','cover'];
 
 const copy=value=>JSON.parse(JSON.stringify(value));
@@ -21,7 +21,7 @@ export function newDefenseAction(type,id=null){
 }
 
 export function newDefenseDraft({position='SS',throwSide=null}={}){
-  return {defenseVersion:DEFENSE_VERSION,position:normalizePosition(position),actions:[],flowEnded:false,outsRecorded:null,runnersAfter:null,official:{status:'missing',po:false,a:false,e:false,dp:false},note:null,throwSide:enumOrNull(throwSide,['R','L']),legacy:false,previousFormat:false};
+  return {defenseVersion:DEFENSE_VERSION,position:normalizePosition(position),situation:{outs:null,runners:null},actions:[],flowEnded:false,outsRecorded:null,runnersAfter:null,official:{status:'missing',po:false,a:false,e:false,dp:false},note:null,throwSide:enumOrNull(throwSide,['R','L']),legacy:false,previousFormat:false};
 }
 
 function normalizeJudgment(raw={}){
@@ -35,10 +35,10 @@ function normalizeAction(raw,index,sourceVersion=DEFENSE_VERSION){
   const source=raw&&typeof raw==='object'?raw:{},type=DEFENSE_ACTION_TYPES.includes(source.type)?source.type:'field',id=safeActionId(source.id,index,type),action={...newDefenseAction(type,id),judgment:normalizeJudgment(source.judgment||{})};
   if(type==='field'){
     action.battedBall=enumOrNull(source.battedBall,['GB','LD','FB','PU','BUNT']);action.direction=enumOrNull(source.direction,['L','C','R']);action.speed=enumOrNull(source.speed,['slow','medium','fast']);action.fieldingType=enumOrNull(source.fieldingType,['FRONT','FOREHAND','BACKHAND','CHARGE','FORWARD','STRAIGHT','LATERAL','BACK']);action.result=enumOrNull(source.result,['clean','recovered','failed']);
-    if(sourceVersion<DEFENSE_VERSION){action.difficulty=enumOrNull(source.difficulty,['routine','normal','difficult']);action.reach=enumOrNull(source.reach,['easy','effort','not_reached']);if(action.reach==='not_reached'&&!action.result)action.result='failed';}
+    if(sourceVersion<4){action.difficulty=enumOrNull(source.difficulty,['routine','normal','difficult']);action.reach=enumOrNull(source.reach,['easy','effort','not_reached']);if(action.reach==='not_reached'&&!action.result)action.result='failed';}
   }else if(type==='throw'){
     const legacyQuality=enumOrNull(source.quality,['accurate','catchable','uncatchable']),legacyMiss=enumOrNull(source.missDirection,['high','low','left','right','bounce']);
-    action.target=enumOrNull(source.target,['1B','2B','3B','HOME','RELAY','OTHER']);action.accuracy=enumOrNull(source.accuracy,['accurate','high','low','left','right','bounce','uncatchable','catchable'])||(legacyQuality==='accurate'?'accurate':legacyQuality==='uncatchable'?'uncatchable':legacyQuality==='catchable'?(legacyMiss||'catchable'):null);action.tlu=[0,.75,.85,1].includes(Number(source.tlu))?Number(source.tlu):.85;action.distance=numberOrNull(source.distance);if(action.distance!==null&&action.distance<0)action.distance=null;action.velocity=numberOrNull(source.velocity);if(action.velocity!==null&&(action.velocity<0||action.velocity>200))action.velocity=null;if(sourceVersion<DEFENSE_VERSION)action.timing=enumOrNull(source.timing,['on_time','late','no_chance']);
+    action.target=enumOrNull(source.target,['1B','2B','3B','HOME','RELAY','OTHER']);action.accuracy=enumOrNull(source.accuracy,['accurate','high','low','left','right','bounce','uncatchable','catchable'])||(legacyQuality==='accurate'?'accurate':legacyQuality==='uncatchable'?'uncatchable':legacyQuality==='catchable'?(legacyMiss||'catchable'):null);action.tlu=[0,.75,.85,1].includes(Number(source.tlu))?Number(source.tlu):.85;action.distance=numberOrNull(source.distance);if(action.distance!==null&&action.distance<0)action.distance=null;action.velocity=numberOrNull(source.velocity);if(action.velocity!==null&&(action.velocity<0||action.velocity>200))action.velocity=null;if(sourceVersion<4)action.timing=enumOrNull(source.timing,['on_time','late','no_chance']);
   }else if(type==='receive'){
     action.target=enumOrNull(source.target,['1B','2B','3B','HOME','RELAY','OTHER']);action.sourcePosition=enumOrNull(source.sourcePosition,['P','C','1B','2B','3B','SS','LF','CF','RF','RELAY','OTHER']);action.incoming=enumOrNull(source.incoming,['on_target','high','low','left','right','wide','bounce','uncatchable']);action.result=enumOrNull(source.result,['clean','recovered','failed','excluded']);action.technique=enumOrNull(source.technique,['normal','stretch','scoop','tag','block','base_hold']);action.baseHold=enumOrNull(source.baseHold,['success','failed','na']);
     if(action.incoming==='uncatchable')action.result='excluded';
@@ -46,7 +46,7 @@ function normalizeAction(raw,index,sourceVersion=DEFENSE_VERSION){
   }else if(type==='tag'){
     action.targetRunner=enumOrNull(source.targetRunner,['BR','R1','R2','R3','UNKNOWN']);action.execution=enumOrNull(source.execution,['clean','recovered','missed','dropped']);action.timing=enumOrNull(source.timing,['early','close','late','na']);action.call=enumOrNull(source.call,['out','safe','no_call']);
   }else if(type==='base'){
-    action.base=enumOrNull(source.base,['1B','2B','3B','HOME']);action.execution=enumOrNull(source.execution,['secure','off_base','missed']);action.timing=enumOrNull(source.timing,['early','close','late','na']);action.call=enumOrNull(source.call,['out','safe','no_call']);if(sourceVersion<DEFENSE_VERSION)action.purpose=enumOrNull(source.purpose,['force','appeal','other']);
+    action.base=enumOrNull(source.base,['1B','2B','3B','HOME']);action.execution=enumOrNull(source.execution,['secure','off_base','missed']);action.timing=enumOrNull(source.timing,['early','close','late','na']);action.call=enumOrNull(source.call,['out','safe','no_call']);if(sourceVersion<4)action.purpose=enumOrNull(source.purpose,['force','appeal','other']);
   }else{
     action.role=enumOrNull(source.role,['base_cover','backup','cutoff','communication']);action.timing=enumOrNull(source.timing,['on_time','late','missed']);action.result=enumOrNull(source.result,['correct','recovered','failed']);
   }
@@ -59,19 +59,24 @@ function normalizeOfficial(raw){
   return status==='entered'&&hasFlag?{status,...flags}:{status:status==='entered'?'none':status,po:false,a:false,e:false,dp:false};
 }
 
+function normalizeSituation(raw){
+  const outs=numberOrNull(raw?.outs),runners=Array.isArray(raw?.runners)?[...new Set(raw.runners.filter(x=>['1B','2B','3B'].includes(x)))]:null;
+  return {outs:[0,1,2].includes(outs)?outs:null,runners};
+}
+
 function legacyDraft(metadata={}){
   const actions=[],fieldMap={success:'clean',unstable:'recovered',failed:'failed'},throwMap={success:'catchable',error:'uncatchable'};
   actions.push(normalizeAction({id:'legacy-field-1',type:'field',battedBall:valueOrNull(metadata.battedBall),result:fieldMap[metadata.fieldingResult]||null,fieldingType:valueOrNull(metadata.fieldingType)},0,1));
   if(['success','error'].includes(metadata.throwResult))actions.push(normalizeAction({id:'legacy-throw-1',type:'throw',target:valueOrNull(metadata.throwTarget),quality:throwMap[metadata.throwResult]||null,tlu:Number(metadata.throwTLU??metadata.throwIntensity)||.85},1,1));
-  return {defenseVersion:DEFENSE_VERSION,position:normalizePosition(metadata.position),actions,flowEnded:true,outsRecorded:null,runnersAfter:null,official:{status:'missing',po:false,a:false,e:false,dp:false},note:textOrNull(metadata.note),throwSide:enumOrNull(metadata.throwSide,['R','L']),legacy:true,previousFormat:true,legacyOutcome:null};
+  return {defenseVersion:DEFENSE_VERSION,position:normalizePosition(metadata.position),situation:normalizeSituation(metadata.situation),actions,flowEnded:true,outsRecorded:null,runnersAfter:null,official:{status:'missing',po:false,a:false,e:false,dp:false},note:textOrNull(metadata.note),throwSide:enumOrNull(metadata.throwSide,['R','L']),legacy:true,previousFormat:true,legacyOutcome:null};
 }
 
 export function normalizeDefenseMetadata(metadata={}){
   if(!Array.isArray(metadata.actions)||Number(metadata.defenseVersion||0)<2)return legacyDraft(metadata);
-  const sourceVersion=Number(metadata.defenseVersion||2),previousFormat=metadata.previousFormat===true||sourceVersion<DEFENSE_VERSION,seenIds=new Set(),actions=metadata.actions.map((raw,index)=>{const action=normalizeAction(raw,index,sourceVersion);let id=action.id,suffix=2;while(seenIds.has(id))id=`${actionId(index,action.type)}-${suffix++}`;action.id=id;seenIds.add(id);return action;});
+  const sourceVersion=Number(metadata.defenseVersion||2),previousFormat=metadata.previousFormat===true||sourceVersion<4,seenIds=new Set(),actions=metadata.actions.map((raw,index)=>{const action=normalizeAction(raw,index,sourceVersion);let id=action.id,suffix=2;while(seenIds.has(id))id=`${actionId(index,action.type)}-${suffix++}`;action.id=id;seenIds.add(id);return action;});
   const legacyOutcome=enumOrNull(metadata.outcome,['out','safe','continue']),rawOuts=numberOrNull(metadata.outsRecorded),outsRecorded=[0,1,2,3].includes(rawOuts)?rawOuts:(previousFormat&&['safe','continue'].includes(legacyOutcome)?0:null),runnersAfter=Array.isArray(metadata.runnersAfter)?[...new Set(metadata.runnersAfter.filter(x=>['1B','2B','3B'].includes(x)))]:null;
   return {
-    defenseVersion:DEFENSE_VERSION,position:normalizePosition(metadata.position),actions,flowEnded:metadata.flowEnded!==false,outsRecorded,runnersAfter,official:normalizeOfficial(metadata.official),note:textOrNull(metadata.note),throwSide:enumOrNull(metadata.throwSide,['R','L']),legacy:metadata.legacy===true,previousFormat,legacyOutcome
+    defenseVersion:DEFENSE_VERSION,position:normalizePosition(metadata.position),situation:normalizeSituation(metadata.situation),actions,flowEnded:metadata.flowEnded!==false,outsRecorded,runnersAfter,official:normalizeOfficial(metadata.official),note:textOrNull(metadata.note),throwSide:enumOrNull(metadata.throwSide,['R','L']),legacy:metadata.legacy===true,previousFormat,legacyOutcome
   };
 }
 
