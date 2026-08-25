@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-title" content="야구일기" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>야구일기 · 나의 야구 기록장</title>
-  <link rel="manifest" href="manifest.webmanifest?v=7.3.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=7.9.0" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192-v7.1.0.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192-v7.1.0.png" />
-  <link rel="stylesheet" href="styles.css?v=7.3.0" />
+  <link rel="stylesheet" href="styles.css?v=7.9.0" />
 </head>
 <body>
 <section id="authGate" class="auth-gate" aria-live="polite">
@@ -84,12 +84,36 @@
 
     <section class="view" data-view="history">
       <div class="page-intro"><div><p class="kicker">HISTORY</p><h2>기록</h2></div><span id="historyCount" class="status-note">0 records</span></div>
-      <div class="filter-card"><label>날짜<select id="historyDate"><option value="all">모든 날짜</option></select></label><div id="historyMode" class="mini-tabs"><button class="active" data-history-mode="all">전체</button><button data-history-mode="game">경기</button><button data-history-mode="training">훈련</button></div><div id="historyDomain" class="mini-tabs"><button class="active" data-history-domain="all">전체</button><button data-history-domain="pitching">투구</button><button data-history-domain="hitting">타격</button><button data-history-domain="defense">수비</button><button data-history-domain="baserunning">주루</button></div></div>
+      <section class="history-controls">
+        <div class="history-context-row">
+          <div id="historyMode" class="segmented-control history-mode-tabs"><button class="active" data-history-mode="all">전체</button><button data-history-mode="game">경기</button><button data-history-mode="training">훈련</button></div>
+          <div id="historyDomain" class="domain-tabs history-domain-tabs"><button class="active" data-history-domain="all">전체</button><button data-history-domain="pitching">투구</button><button data-history-domain="hitting">타격</button><button data-history-domain="defense">수비</button><button data-history-domain="baserunning">주루</button></div>
+        </div>
+        <div class="history-scope-card">
+          <div class="history-date-block">
+            <div class="analysis-block-label"><span>기준일</span><small>조회 기간의 마지막 날</small></div>
+            <div class="history-date-navigator">
+              <button id="historyPrevDate" class="history-date-step" type="button" aria-label="이전 기록일"><span aria-hidden="true">‹</span><b>이전 기록</b></button>
+              <label class="history-anchor-field" for="historyAnchorDate"><span id="historyAnchorBadge" class="history-anchor-badge">오늘</span><input id="historyAnchorDate" type="date" aria-label="기록 검색 기준일" /><small id="historyAnchorMeta">기록 확인 중</small></label>
+              <button id="historyNextDate" class="history-date-step" type="button" aria-label="다음 기록일"><b>다음 기록</b><span aria-hidden="true">›</span></button>
+            </div>
+          </div>
+          <div class="history-period-block">
+            <div class="analysis-block-label"><span>조회 기간</span><small>기준일까지의 기록</small></div>
+            <div id="historyPeriodTabs" class="history-period-tabs" role="group" aria-label="기록 조회 기간"><button type="button" data-history-period="1">1일</button><button type="button" data-history-period="7">7일</button><button type="button" data-history-period="30">30일</button><button type="button" data-history-period="90">90일</button><button type="button" data-history-period="season">시즌</button><button class="active" type="button" data-history-period="all">누적</button></div>
+          </div>
+          <div id="historyScopeSummary" class="history-scope-summary" aria-live="polite"></div>
+        </div>
+        <details id="historyConditions" class="history-conditions">
+          <summary><span>상세 조건</span><small id="historyConditionSummary">전체 조건</small><i aria-hidden="true">⌄</i></summary>
+          <div class="history-condition-body"><div id="historyConditionFields" class="history-condition-fields"></div></div>
+        </details>
+      </section>
       <div id="historyList" class="history-list"></div>
     </section>
 
     <section class="view" data-view="analysis">
-      <div class="page-intro"><div><p class="kicker">분석 대시보드</p><h2>분석</h2></div><span class="status-note">요약 → 추이 → 세부 분석</span></div>
+      <div class="page-intro"><div><p class="kicker">ANALYSIS DASHBOARD</p><h2>분석</h2></div><span class="status-note">요약 → 추이 → 세부 분석</span></div>
       <section class="analysis-controls">
         <div class="analysis-context-row">
           <div id="analysisSourceTabs" class="segmented-control analysis-source-tabs"><button class="active" data-analysis-source="game">경기 성과</button><button data-analysis-source="training">훈련 · 워크로드</button></div>
@@ -124,7 +148,7 @@
     </section>
 
     <section class="view" data-view="settings">
-      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.3.0</span></div>
+      <div class="page-intro"><div><p class="kicker">SETTINGS</p><h2>설정</h2></div><span class="status-note">야구일기 V7.9.0</span></div>
       <div class="settings-grid">
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">ATHLETES</p><h2>선수 관리</h2></div><span id="athleteCount" class="microcopy"></span></div><div id="athleteList" class="athlete-list"></div><button id="addAthleteBtn" class="primary-btn full">+ 선수 추가</button></section>
         <section class="settings-card"><div class="panel-head"><div><p class="section-kicker">CLOUD</p><h2>계정 및 동기화</h2></div><span id="cloudBadge" class="cloud-badge synced">동기화됨</span></div><div id="cloudLoggedIn" class="cloud-box cloud-account-box"><div class="cloud-account-head"><span class="cloud-account-icon" aria-hidden="true">☁</span><div><small>로그인 계정</small><b id="cloudUserEmail"></b></div></div><p id="cloudStatusText">계정 전용 저장공간을 사용 중입니다.</p><div class="cloud-sync-meta"><small id="cloudPendingCount" class="muted"></small><small id="cloudLastSync" class="muted"></small></div><div class="cloud-main-actions"><button id="syncNowBtn" class="primary-btn full" type="button"><span aria-hidden="true">↻</span><b>지금 동기화</b></button><button id="signOutBtn" class="soft-btn full" type="button"><span aria-hidden="true">↪</span><b>로그아웃</b></button></div><button id="signOutClearBtn" class="danger-ghost full" type="button">로그아웃하고 이 기기 캐시 삭제</button></div></section>
@@ -143,7 +167,11 @@
 <div id="inPlayModal" class="modal-backdrop" hidden><div class="modal-card compact"><div class="modal-head"><div><p class="section-kicker">IN PLAY</p><h2 id="inPlayTitle">타구 결과</h2></div><button class="icon-btn" data-close="inPlayModal">×</button></div><div class="form-grid"><label>타구 형태<select id="inPlayBallType"><option value="">선택 안 함</option><option value="GB">GB · 땅볼</option><option value="LD">LD · 라인드라이브</option><option value="FB">FB · 뜬공</option></select></label><label>타구 방향<select id="inPlayDirection"><option value="">선택 안 함</option><option value="L">좌</option><option value="C">중</option><option value="R">우</option></select></label></div><div id="inPlayResults" class="result-grid eight"><button data-result="OUT">OUT</button><button data-result="1B">1B</button><button data-result="2B">2B</button><button data-result="3B">3B</button><button data-result="HR">HR</button><button data-result="ROE">ROE</button><button data-result="SH">SH<small>희생번트</small></button><button data-result="SF">SF<small>희생플라이</small></button></div></div></div>
 
 
-<div id="pitchEditModal" class="modal-backdrop sheet-backdrop" hidden><form id="pitchEditForm" class="modal-card bottom-sheet"><div class="modal-head"><div><p class="section-kicker">PITCH EDIT</p><h2 id="pitchEditTitle">투구 수정</h2></div><button class="icon-btn" type="button" data-close="pitchEditModal">×</button></div><input id="pitchEditId" type="hidden" /><input id="pitchEditKind" type="hidden" /><div class="edit-section"><span class="edit-label">이 공의 투타 조건</span><div id="pitchEditMatchupFields" class="form-grid pitch-edit-matchup"></div></div><div class="edit-section"><span class="edit-label">이 공의 결과</span><div id="pitchEditTypeButtons" class="pitch-edit-types"></div></div><div id="pitchEditInPlayFields" class="edit-section" hidden><span class="edit-label">IN PLAY 결과</span><div id="pitchEditResultButtons" class="result-grid eight pitch-edit-results"></div><div class="form-grid edit-details"><label>타구 형태<select id="pitchEditBallType"><option value="">미입력</option><option value="GB">GB · 땅볼</option><option value="LD">LD · 라인드라이브</option><option value="FB">FB · 뜬공</option></select></label><label>방향<select id="pitchEditDirection"><option value="">미입력</option><option value="L">좌</option><option value="C">중</option><option value="R">우</option></select></label></div></div><div class="edit-section"><span class="edit-label">영상 분석 상세정보 · 선택</span><div class="form-grid"><label>구종<input id="pitchEditPitchType" placeholder="예: FB / SL" /></label><label>구속 km/h<input id="pitchEditVelocity" type="number" min="0" max="200" /></label><label>위치<input id="pitchEditZone" placeholder="예: 몸쪽 낮음" /></label><label class="span-2">메모<input id="pitchEditNote" /></label></div></div><div class="modal-actions pitch-edit-actions"><button id="deletePitchBtn" type="button" class="danger-ghost">이 공 삭제</button><span></span><button type="button" class="soft-btn" data-close="pitchEditModal">취소</button><button class="primary-btn" type="submit">변경 저장</button></div></form></div>
+<div id="pitchEditModal" class="modal-backdrop sheet-backdrop" hidden><form id="pitchEditForm" class="modal-card bottom-sheet"><div class="modal-head"><div><p class="section-kicker">PITCH EDIT</p><h2 id="pitchEditTitle">투구 수정</h2></div><button class="icon-btn" type="button" data-close="pitchEditModal">×</button></div><input id="pitchEditId" type="hidden" /><input id="pitchEditKind" type="hidden" /><div class="edit-section"><span class="edit-label">이 공의 투타 조건</span><div id="pitchEditMatchupFields" class="form-grid pitch-edit-matchup"></div></div><div id="pitchEditSituation" class="edit-section"></div><div class="edit-section"><span class="edit-label">이 공의 결과</span><div id="pitchEditTypeButtons" class="pitch-edit-types"></div></div><div id="pitchEditInPlayFields" class="edit-section" hidden><span class="edit-label">IN PLAY 결과</span><div id="pitchEditResultButtons" class="result-grid eight pitch-edit-results"></div><div class="form-grid edit-details"><label>타구 형태<select id="pitchEditBallType"><option value="">미입력</option><option value="GB">GB · 땅볼</option><option value="LD">LD · 라인드라이브</option><option value="FB">FB · 뜬공</option></select></label><label>방향<select id="pitchEditDirection"><option value="">미입력</option><option value="L">좌</option><option value="C">중</option><option value="R">우</option></select></label></div></div><div class="edit-section"><span class="edit-label">영상 분석 상세정보 · 선택</span><div class="form-grid"><label>구종<input id="pitchEditPitchType" placeholder="예: FB / SL" /></label><label>구속 km/h<input id="pitchEditVelocity" type="number" min="0" max="200" /></label><label>위치<input id="pitchEditZone" placeholder="예: 몸쪽 낮음" /></label><label class="span-2">메모<input id="pitchEditNote" /></label></div></div><div class="modal-actions pitch-edit-actions"><button id="deletePitchBtn" type="button" class="danger-ghost">이 공 삭제</button><span></span><button type="button" class="soft-btn" data-close="pitchEditModal">취소</button><button class="primary-btn" type="submit">변경 저장</button></div></form></div>
+
+<div id="defenseEditModal" class="modal-backdrop sheet-backdrop" hidden><form id="defenseEditForm" class="modal-card bottom-sheet defense-edit-sheet"><div class="modal-head"><div><p class="section-kicker">DEFENSE EDIT</p><h2>수비 기록 수정</h2></div><button class="icon-btn" type="button" data-close-defense-edit>×</button></div><label class="defense-edit-date">활동 날짜<input id="defenseEditDate" type="date" /></label><div id="defenseEditEditor" class="defense-editor defense-edit-editor"></div><div class="defense-edit-actions"><button type="button" class="soft-btn" data-close-defense-edit>취소</button><button class="primary-btn" type="submit">변경 저장</button></div></form></div>
+
+<div id="trainingEditModal" class="modal-backdrop sheet-backdrop" hidden><form id="trainingEditForm" class="modal-card bottom-sheet defense-edit-sheet training-edit-sheet"><div class="modal-head"><div><p class="section-kicker">TRAINING EDIT</p><h2 id="trainingEditTitle">훈련 기록 수정</h2></div><button class="icon-btn" type="button" data-close-training-edit>×</button></div><label class="defense-edit-date">활동 날짜<input id="trainingEditDate" type="date" /></label><div id="trainingEditEditor" class="defense-editor training-edit-editor"></div><div class="defense-edit-actions"><button type="button" class="soft-btn" data-close-training-edit>취소</button><button class="primary-btn" type="submit">변경 저장</button></div></form></div>
 
 <div id="recordEditModal" class="modal-backdrop" hidden><form id="recordEditForm" class="modal-card compact"><div class="modal-head"><div><p class="section-kicker">EDIT</p><h2>기록 수정</h2></div><button class="icon-btn" type="button" data-close="recordEditModal">×</button></div><input id="editRecordStore" type="hidden" /><input id="editRecordId" type="hidden" /><div id="recordEditFields" class="form-grid"></div><div class="modal-actions right"><button type="button" class="soft-btn" data-close="recordEditModal">취소</button><button class="primary-btn">저장</button></div></form></div>
 
@@ -152,8 +180,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="undoBar" class="undo-bar" hidden><span id="undoText">삭제했습니다.</span><button id="undoDeleteBtn">실행 취소</button></div>
 
-<script src="vendor/supabase-2.112.3.min.js?v=7.3.0"></script>
-<script src="supabase-config.js?v=7.3.0"></script>
+<script src="vendor/supabase-2.112.3.min.js?v=7.9.0"></script>
+<script src="supabase-config.js?v=7.9.0"></script>
 <div id="bootError" class="boot-error" hidden><b>앱 로딩에 실패했습니다.</b><span>이전 버전 캐시가 남아 있을 수 있습니다.</span><button id="clearAppCache" type="button">캐시 정리 후 다시 열기</button></div>
 <script>
 window.__BT_APP_READY__=false;
@@ -171,6 +199,6 @@ window.clearBaseballTrackerCache=async function(){
 };
 document.addEventListener('click',function(e){ if(e.target&&e.target.id==='clearAppCache') window.clearBaseballTrackerCache(); });
 </script>
-<script type="module" src="js/app.js?v=7.3.0" onerror="document.getElementById('bootError').hidden=false"></script>
+<script type="module" src="js/app.js?v=7.9.0" onerror="document.getElementById('bootError').hidden=false"></script>
 </body>
 </html>

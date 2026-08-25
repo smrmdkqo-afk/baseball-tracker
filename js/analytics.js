@@ -1,3 +1,6 @@
+import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary,defenseThrowQuality} from './defense.js?v=7.9.0';
+import {normalizeDefenseTrainingRecord,defenseTrainingActionCount,defenseTrainingStats} from './defense-training.js?v=7.9.0';
+
 export const OFFICIAL_PITCH_TYPES=new Set(['ball','called','swinging','foul','inplay','hbp']);
 export const STRIKE_PITCH_TYPES=new Set(['called','swinging','foul','inplay']);
 export const HITTING_PITCH_TYPES=new Set(['taken_ball','taken_strike','swinging_strike','foul','in_play','hbp']);
@@ -63,6 +66,36 @@ function ratioObject(obj){const total=Object.values(obj||{}).reduce((a,v)=>a+Num
 function sortedParentEvents(events,parentId){return events.filter(event=>event.parentId===parentId).sort((a,b)=>new Date(a.recordedAt)-new Date(b.recordedAt));}
 function parentMatchesSides(parent,parentEvents,sides){const terminal=parentEvents.at(-1)||null;return eventMatchesSides(terminal,parent,sides);}
 
+const SITUATION_BASES=['1B','2B','3B'];
+export function normalizeGameSituation(raw={}){
+  const rawOuts=raw?.outs,outs=rawOuts===null||rawOuts===undefined||rawOuts===''?null:Number(rawOuts),runners=Array.isArray(raw?.runners)?SITUATION_BASES.filter(base=>raw.runners.includes(base)):null;
+  return {outs:[0,1,2].includes(outs)?outs:null,runners};
+}
+function situationKeys(event){
+  const situation=normalizeGameSituation(event?.metadata?.situation),outKey=situation.outs===null?'missing':String(situation.outs),runners=situation.runners;
+  const runnerKey=runners===null?'missing':!runners.length?'none':runners.length===3?'loaded':runners.some(base=>base==='2B'||base==='3B')?'scoring':'first';
+  return {outKey,runnerKey};
+}
+function addSituation(stats,event,create,update){const {outKey,runnerKey}=situationKeys(event);for(const [map,key] of [[stats.outs,outKey],[stats.runners,runnerKey]]){const bucket=map[key]||(map[key]=create());update(bucket);}}
+function finalizeSituation(stats,finalize){for(const map of Object.values(stats))for(const bucket of Object.values(map))finalize(bucket);return stats;}
+function pitchingSituationStats(pitches,completed,allPitches){
+  const stats={outs:{},runners:{}},create=()=>({pitches:0,strikes:0,csw:0,bf:0,k:0,bb:0});
+  for(const event of pitches)addSituation(stats,event,create,bucket=>{bucket.pitches++;if(STRIKE_PITCH_TYPES.has(event.eventType))bucket.strikes++;if(['called','swinging'].includes(event.eventType))bucket.csw++;});
+  for(const parent of completed){const terminal=sortedParentEvents(allPitches,parent.id).at(-1);if(!terminal)continue;addSituation(stats,terminal,create,bucket=>{bucket.bf++;if(parent.result==='K')bucket.k++;if(parent.result==='BB')bucket.bb++;});}
+  return finalizeSituation(stats,bucket=>{bucket.strikePct=pct(bucket.strikes,bucket.pitches);bucket.cswPct=pct(bucket.csw,bucket.pitches);bucket.kPct=pct(bucket.k,bucket.bf);bucket.bbPct=pct(bucket.bb,bucket.bf);});
+}
+function battingSituationStats(events,completed,allEvents){
+  const stats={outs:{},runners:{}},create=()=>({pitches:0,swings:0,whiffs:0,contacts:0,pa:0,ab:0,h:0,bb:0,hbp:0,sf:0,sh:0,tb:0});
+  for(const event of events)addSituation(stats,event,create,bucket=>{bucket.pitches++;if(['swinging_strike','foul','in_play'].includes(event.eventType))bucket.swings++;if(event.eventType==='swinging_strike')bucket.whiffs++;if(['foul','in_play'].includes(event.eventType))bucket.contacts++;});
+  for(const parent of completed){const terminal=sortedParentEvents(allEvents,parent.id).at(-1);if(!terminal)continue;addSituation(stats,terminal,create,bucket=>{const result=parent.result;bucket.pa++;if(result==='BB')bucket.bb++;else if(result==='HBP')bucket.hbp++;else if(result==='SF')bucket.sf++;else if(result==='SH')bucket.sh++;else{bucket.ab++;if(['1B','2B','3B','HR'].includes(result)){bucket.h++;bucket.tb+=result==='1B'?1:result==='2B'?2:result==='3B'?3:4;}}});}
+  return finalizeSituation(stats,bucket=>{bucket.avg=pct(bucket.h,bucket.ab);bucket.obp=pct(bucket.h+bucket.bb+bucket.hbp,bucket.ab+bucket.bb+bucket.hbp+bucket.sf);bucket.slg=bucket.ab?bucket.tb/bucket.ab:(bucket.pa?0:null);bucket.ops=bucket.obp===null?null:bucket.obp+bucket.slg;bucket.contactPct=pct(bucket.contacts,bucket.swings);bucket.whiffPct=pct(bucket.whiffs,bucket.swings);});
+}
+function baserunningSituationStats(events){
+  const stats={outs:{},runners:{}},create=()=>({attempts:0,success:0,failed:0});
+  for(const event of events)addSituation(stats,event,create,bucket=>{bucket.attempts++;if(event.metadata?.result==='SUCCESS')bucket.success++;else if(event.metadata?.result==='FAILED')bucket.failed++;});
+  return finalizeSituation(stats,bucket=>{bucket.successPct=pct(bucket.success,bucket.attempts);});
+}
+
 export function gamePitchingSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null,pitcherSide=null,batterSide=null}={}){
   const maps=parentMaps(data,athleteId);
   const all=canonicalGameEvents(data,{athleteId}).filter(e=>e.domain==='pitching'&&matchDateAndGame(scopeRecordForEvent(e,maps),{date,from,to,gameDayId}));
@@ -102,7 +135,7 @@ export function gamePitchingSummary(data,{athleteId,date=null,from=null,to=null,
   const battedTypeInfo=ratioObject(battedTypes),directionInfo=ratioObject(directions);
   const defenseTLU=batterSide?0:defenseSummary(data,{athleteId,date,from,to,gameDayId,throwSide:pitcherSide}).throwTLU;
   const strikePct=pct(strikes.length,pitches.length),kPct=pct(k,completed.length),bbPct=pct(bb,completed.length);
-  const missingPitcherSide=allPitches.filter(e=>!gameEventMatchup(e,maps.bf.get(e.parentId)).pitcherSide).length,missingBatterSide=allPitches.filter(e=>!gameEventMatchup(e,maps.bf.get(e.parentId)).batterSide).length;
+  const missingPitcherSide=allPitches.filter(e=>!gameEventMatchup(e,maps.bf.get(e.parentId)).pitcherSide).length,missingBatterSide=allPitches.filter(e=>!gameEventMatchup(e,maps.bf.get(e.parentId)).batterSide).length,situationStats=pitchingSituationStats(pitches,completed,allPitches);
   return {
     officialPitches:pitches.length,totalGameThrows:pitches.length+pickoffs.length+pickoffErrors.length+warmups.length,
     gameTLU:round2(gameTLU),gameTotalTLU:round2(gameTLU+defenseTLU),defenseThrowTLU:round2(defenseTLU),
@@ -112,7 +145,7 @@ export function gamePitchingSummary(data,{athleteId,date=null,from=null,to=null,
     bf:completed.length,unknownBF:unknown.length,relievedBF:relieved.length,incompleteBF:incomplete.length,k,bb,bfHbp,kPct,bbPct,kMinusBbPct:kPct==null||bbPct==null?null:kPct-bbPct,
     completedPitchCount,pitchesPerBatter:pct(completedPitchCount,completed.length),pickoffs:pickoffs.length,pickoffErrors:pickoffErrors.length,warmups:warmups.length,pitchingExits:pitchingExits.length,
     missingPitcherSide,missingBatterSide,
-    battedResults,battedTypes,battedTypePct:battedTypeInfo.ratios,directions,directionPct:directionInfo.ratios,bipWithType:battedTypeInfo.total,bipWithDirection:directionInfo.total,
+    battedResults,battedTypes,battedTypePct:battedTypeInfo.ratios,directions,directionPct:directionInfo.ratios,bipWithType:battedTypeInfo.total,bipWithDirection:directionInfo.total,situationStats,
     events,pitches,bfList,completedBF:completed
   };
 }
@@ -125,19 +158,19 @@ export function battingSummary(data,{athleteId,date=null,from=null,to=null,gameD
   const events=allEvents.filter(e=>eventMatchesSides(e,maps.pa.get(e.parentId),{batterSide,pitcherSide}));
   const counts={};for(const p of completed)counts[p.result]=(counts[p.result]||0)+1;
   const H=(counts['1B']||0)+(counts['2B']||0)+(counts['3B']||0)+(counts.HR||0),BB=counts.BB||0,HBP=counts.HBP||0,SF=counts.SF||0,SH=counts.SH||0,SO=counts.SO||0,ROE=counts.ROE||0,HR=counts.HR||0;
-  const AB=completed.length-BB-HBP-SF-SH,TB=(counts['1B']||0)+2*(counts['2B']||0)+3*(counts['3B']||0)+4*HR,AVG=pct(H,AB),OBP=pct(H+BB+HBP,AB+BB+HBP+SF),SLG=pct(TB,AB),OPS=OBP==null||SLG==null?null:OBP+SLG,ISO=AVG==null||SLG==null?null:SLG-AVG;
+  const AB=completed.length-BB-HBP-SF-SH,TB=(counts['1B']||0)+2*(counts['2B']||0)+3*(counts['3B']||0)+4*HR,AVG=pct(H,AB),OBP=pct(H+BB+HBP,AB+BB+HBP+SF),SLG=AB?TB/AB:(completed.length?0:null),OPS=OBP==null?null:OBP+SLG,ISO=AVG==null||SLG==null?null:SLG-AVG;
   const babipDen=AB-SO-HR+SF,BABIP=pct(H-HR,babipDen);
   const swingTypes=new Set(['swinging_strike','foul','in_play']),swings=events.filter(e=>swingTypes.has(e.eventType)),whiffs=events.filter(e=>e.eventType==='swinging_strike'),contacts=events.filter(e=>['foul','in_play'].includes(e.eventType));
   const takenBalls=events.filter(e=>e.eventType==='taken_ball').length,takenStrikes=events.filter(e=>e.eventType==='taken_strike').length,totalPitches=events.length;
   const completedIds=new Set(completed.map(p=>p.id)),completedPitchCount=allEvents.filter(e=>completedIds.has(e.parentId)).length;
   const battedTypes={GB:0,LD:0,FB:0},directions={L:0,C:0,R:0};for(const e of events.filter(e=>e.eventType==='in_play')){const bt=e.metadata?.battedBall;if(bt&&bt in battedTypes)battedTypes[bt]++;const dr=e.metadata?.direction;if(dr&&dr in directions)directions[dr]++;}
   const battedTypeInfo=ratioObject(battedTypes),directionInfo=ratioObject(directions),kPct=pct(SO,completed.length),bbPct=pct(BB,completed.length);
-  const missingBatterSide=allEvents.filter(e=>!gameEventMatchup(e,maps.pa.get(e.parentId)).batterSide).length,missingPitcherSide=allEvents.filter(e=>!gameEventMatchup(e,maps.pa.get(e.parentId)).pitcherSide).length;
+  const missingBatterSide=allEvents.filter(e=>!gameEventMatchup(e,maps.pa.get(e.parentId)).batterSide).length,missingPitcherSide=allEvents.filter(e=>!gameEventMatchup(e,maps.pa.get(e.parentId)).pitcherSide).length,situationStats=battingSituationStats(events,completed,allEvents);
   return {
     PA:completed.length,unknownPA:unknown.length,incompletePA:incomplete.length,AB,H,BB,HBP,SF,SH,SO,ROE,HR,AVG,OBP,SLG,OPS,ISO,BABIP,TB,counts,
     totalPitches,completedPitchCount,pitchesPerPA:pct(completedPitchCount,completed.length),swings:swings.length,whiffs:whiffs.length,contacts:contacts.length,
     swingPct:pct(swings.length,totalPitches),whiffPct:pct(whiffs.length,swings.length),contactPct:pct(contacts.length,swings.length),calledStrikePct:pct(takenStrikes,totalPitches),kPct,bbPct,bbPerK:pct(BB,SO),
-    takenBalls,takenStrikes,events,pas,completedPA:completed,missingBatterSide,missingPitcherSide,battedTypes,battedTypePct:battedTypeInfo.ratios,directions,directionPct:directionInfo.ratios,bipWithType:battedTypeInfo.total,bipWithDirection:directionInfo.total
+    takenBalls,takenStrikes,events,pas,completedPA:completed,missingBatterSide,missingPitcherSide,battedTypes,battedTypePct:battedTypeInfo.ratios,directions,directionPct:directionInfo.ratios,bipWithType:battedTypeInfo.total,bipWithDirection:directionInfo.total,situationStats
   };
 }
 
@@ -145,15 +178,44 @@ function isOutfieldPosition(p){return ['LF','CF','RF'].includes(String(p||'').to
 function fieldTypeBucket(m){return isOutfieldPosition(m.position)||m.positionGroup==='OF'?'OF':'IF';}
 export function defenseSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null,throwSide=null}={}){
   const events=canonicalGameEvents(data,{athleteId}).filter(e=>e.domain==='defense'&&matchDateAndGame(e,{date,from,to,gameDayId})&&e.eventType==='fielding_play'&&(!throwSide||((e.metadata?.throwSide||athleteThrowSide(data,athleteId))===throwSide)));
-  const field={success:0,unstable:0,failed:0},throws={success:0,error:0,none:0},ifTypes={},ofTypes={},targets={},targetStats={},fieldTypeThrowStats={};let throwTLU=0;
-  for(const e of events){const m=e.metadata||{};if(m.fieldingResult)field[m.fieldingResult]=(field[m.fieldingResult]||0)+1;if(m.throwResult)throws[m.throwResult]=(throws[m.throwResult]||0)+1;
-    if(m.throwTarget){targets[m.throwTarget]=(targets[m.throwTarget]||0)+1;const x=targetStats[m.throwTarget]||(targetStats[m.throwTarget]={attempts:0,success:0,error:0});if(['success','error'].includes(m.throwResult)){x.attempts++;x[m.throwResult]++;}}
-    if(m.fieldingType){const bucket=fieldTypeBucket(m),obj=bucket==='OF'?ofTypes:ifTypes;obj[m.fieldingType]=(obj[m.fieldingType]||0)+1;const x=fieldTypeThrowStats[m.fieldingType]||(fieldTypeThrowStats[m.fieldingType]={attempts:0,success:0,error:0,bucket});if(['success','error'].includes(m.throwResult)){x.attempts++;x[m.throwResult]++;}}
-    if(['success','error'].includes(m.throwResult))throwTLU+=Number(m.throwTLU??m.throwIntensity??0)||0;
+  const field={success:0,unstable:0,failed:0,missing:0},throws={success:0,error:0,missing:0,none:0},receives={clean:0,recovered:0,failed:0,excluded:0,missing:0},tags={clean:0,recovered:0,missed:0,dropped:0,missing:0},tagCalls={out:0,safe:0,no_call:0,missing:0},baseTouches={secure:0,off_base:0,missed:0,missing:0},baseCalls={out:0,safe:0,no_call:0,missing:0},outTiming={early:0,close:0,late:0,na:0,missing:0},covers={correct:0,recovered:0,failed:0,missing:0},coverTiming={on_time:0,late:0,missed:0,missing:0},throwQuality={accurate:0,catchable:0,uncatchable:0,missing:0},throwAccuracy={accurate:0,high:0,low:0,left:0,right:0,bounce:0,catchable:0,uncatchable:0,missing:0},actionCounts={field:0,throw:0,receive:0,tag:0,base:0,cover:0},official={po:0,a:0,e:0,dp:0,missing:0,none:0},dataStatus={complete:0,incomplete:0,legacy:0},fieldDirections={},fieldSpeeds={},fieldMethods={},targets={},targetStats={},fieldTypeThrowStats={},throwLoadStats={},receiveSources={},receiveLocations={},receiveForms={},receiveMethods={},tagTargets={},baseTargets={},coverRoles={},positionStats={},playOuts={0:0,1:0,2:0,3:0,missing:0},runnersAfter={none:0,'1B':0,'2B':0,'3B':0,missing:0},startOuts={0:0,1:0,2:0,missing:0},runnersBefore={none:0,'1B':0,'2B':0,'3B':0,missing:0},scoringPosition={yes:0,no:0,missing:0},situationStats={outs:{},runners:{}};let throwTLU=0,receiveSaveOpportunities=0,receiveSaves=0,scoopAttempts=0,scoopSuccess=0;
+  const judgment={best:0,acceptable:0,wrong:0,evaluated:0,appropriate:0};
+  const addSplit=(map,key,result,{success=['clean','recovered'],failed=['failed'],excluded=['excluded']}={})=>{if(!key)return;const x=map[key]||(map[key]={attempts:0,success:0,failed:0,excluded:0,missing:0});x.attempts++;if(success.includes(result))x.success++;else if(failed.includes(result))x.failed++;else if(excluded.includes(result))x.excluded++;else x.missing++;};
+  const addSituationPerformance=(map,key,m,actions)=>{const x=map[key]||(map[key]={plays:0,fieldAttempts:0,fieldSecure:0,throwAttempts:0,throwSuccess:0,errors:0});x.plays++;for(const action of actions){if(action.type==='field'&&['clean','recovered','failed'].includes(action.result)){x.fieldAttempts++;if(['clean','recovered'].includes(action.result))x.fieldSecure++;}else if(action.type==='throw'){const quality=defenseThrowQuality(action);if(['accurate','catchable','uncatchable'].includes(quality)){x.throwAttempts++;if(['accurate','catchable'].includes(quality))x.throwSuccess++;}}}if(m.official.e)x.errors++;};
+  for(const e of events){
+    const m=normalizeDefenseMetadata(e.metadata||{}),actions=m.actions||[],throwActions=actions.filter(x=>x.type==='throw');throwTLU+=defenseThrowTLU(m);
+    if(m.legacy||m.previousFormat)dataStatus.legacy++;else if(defenseMissingFields(m).length)dataStatus.incomplete++;else dataStatus.complete++;
+    if(m.outsRecorded===null)playOuts.missing++;else playOuts[m.outsRecorded]++;if(m.runnersAfter===null)runnersAfter.missing++;else if(!m.runnersAfter.length)runnersAfter.none++;else for(const runner of m.runnersAfter)runnersAfter[runner]++;
+    const startOutKey=m.situation?.outs===null?'missing':String(m.situation.outs),startRunnerList=m.situation?.runners,startRunnerKey=startRunnerList===null?'missing':!startRunnerList.length?'none':startRunnerList.some(x=>x==='2B'||x==='3B')?'scoring':'first';startOuts[startOutKey]++;if(startRunnerList===null){runnersBefore.missing++;scoringPosition.missing++;}else if(!startRunnerList.length){runnersBefore.none++;scoringPosition.no++;}else{for(const runner of startRunnerList)runnersBefore[runner]++;if(startRunnerList.some(x=>x==='2B'||x==='3B'))scoringPosition.yes++;else scoringPosition.no++;}addSituationPerformance(situationStats.outs,startOutKey,m,actions);addSituationPerformance(situationStats.runners,startRunnerKey,m,actions);
+    if(m.official.status==='missing')official.missing++;else if(m.official.status==='none')official.none++;for(const key of ['po','a','e','dp'])if(m.official[key])official[key]++;
+    const ps=positionStats[m.position]||(positionStats[m.position]={plays:0,po:0,a:0,e:0,dp:0,fieldAttempts:0,fieldSecure:0});ps.plays++;for(const key of ['po','a','e','dp'])if(m.official[key])ps[key]++;
+    const js=defenseJudgmentSummary(m);for(const key of ['best','acceptable','wrong','evaluated','appropriate'])judgment[key]+=js[key]||0;
+    if(!throwActions.length)throws.none++;
+    for(const [actionIndex,action] of actions.entries()){
+      actionCounts[action.type]=(actionCounts[action.type]||0)+1;
+      if(action.type==='field'){
+        if(action.result==='clean')field.success++;else if(action.result==='recovered')field.unstable++;else if(action.result==='failed')field.failed++;else field.missing++;
+        ps.fieldAttempts++;if(['clean','recovered'].includes(action.result))ps.fieldSecure++;
+        addSplit(fieldDirections,action.direction,action.result);addSplit(fieldSpeeds,action.speed,action.result);addSplit(fieldMethods,action.fieldingType,action.result);
+      }else if(action.type==='throw'){
+        const accuracy=action.accuracy||'missing',quality=defenseThrowQuality(action);throwAccuracy[accuracy]=(throwAccuracy[accuracy]||0)+1;throwQuality[quality]=(throwQuality[quality]||0)+1;if(['accurate','catchable'].includes(quality))throws.success++;else if(quality==='uncatchable')throws.error++;else throws.missing++;
+        if(action.target){targets[action.target]=(targets[action.target]||0)+1;const x=targetStats[action.target]||(targetStats[action.target]={attempts:0,success:0,error:0,missing:0});x.attempts++;if(['accurate','catchable'].includes(quality))x.success++;else if(quality==='uncatchable')x.error++;else x.missing++;}
+        const load=String(Number(action.tlu)||0),loadStat=throwLoadStats[load]||(throwLoadStats[load]={attempts:0,success:0,error:0,missing:0,tlu:0});loadStat.attempts++;loadStat.tlu+=Number(action.tlu)||0;if(['accurate','catchable'].includes(quality))loadStat.success++;else if(quality==='uncatchable')loadStat.error++;else loadStat.missing++;
+        const previous=actions[actionIndex-1];if(previous?.type==='field'&&previous.fieldingType){const bucket=fieldTypeBucket(m),x=fieldTypeThrowStats[previous.fieldingType]||(fieldTypeThrowStats[previous.fieldingType]={attempts:0,success:0,error:0,missing:0,bucket});x.attempts++;if(['accurate','catchable'].includes(quality))x.success++;else if(quality==='uncatchable')x.error++;else x.missing++;}
+      }else if(action.type==='receive'){
+        const result=action.result||'missing';receives[result]=(receives[result]||0)+1;if(['high','low','left','right','wide','bounce'].includes(action.incoming)&&['clean','recovered','failed'].includes(result)){receiveSaveOpportunities++;if(['clean','recovered'].includes(result))receiveSaves++;}if(action.technique==='scoop'&&['clean','recovered','failed'].includes(result)){scoopAttempts++;if(['clean','recovered'].includes(result))scoopSuccess++;}addSplit(receiveSources,action.sourcePosition,result);addSplit(receiveLocations,action.target,result);addSplit(receiveForms,action.incoming,result);addSplit(receiveMethods,action.technique,result);
+      }else if(action.type==='tag'){
+        const execution=action.execution||'missing',call=action.call||'missing',timing=action.timing||'missing';tags[execution]=(tags[execution]||0)+1;tagCalls[call]=(tagCalls[call]||0)+1;outTiming[timing]=(outTiming[timing]||0)+1;addSplit(tagTargets,action.targetRunner,call,{success:['out'],failed:['safe'],excluded:['no_call']});
+      }else if(action.type==='base'){
+        const execution=action.execution||'missing',call=action.call||'missing',timing=action.timing||'missing';baseTouches[execution]=(baseTouches[execution]||0)+1;baseCalls[call]=(baseCalls[call]||0)+1;outTiming[timing]=(outTiming[timing]||0)+1;addSplit(baseTargets,action.base,call,{success:['out'],failed:['safe'],excluded:['no_call']});
+      }else{const result=action.result||'missing',timing=action.timing||'missing';covers[result]=(covers[result]||0)+1;coverTiming[timing]=(coverTiming[timing]||0)+1;addSplit(coverRoles,action.role,result,{success:['correct','recovered'],failed:['failed'],excluded:[]});}
+    }
   }
-  for(const x of Object.values(targetStats))x.successPct=pct(x.success,x.attempts);for(const x of Object.values(fieldTypeThrowStats))x.successPct=pct(x.success,x.attempts);
-  const fieldAttempts=field.success+field.unstable+field.failed,throwAttempts=throws.success+throws.error;
-  return {plays:events.length,field,throws,ifTypes,ofTypes,targets,targetStats,fieldTypeThrowStats,fieldAttempts,fieldingSuccessPct:pct(field.success,fieldAttempts),throwSuccessPct:pct(throws.success,throwAttempts),throwTLU:round2(throwTLU),throwAttempts,events};
+  const rateMaps=[targetStats,fieldTypeThrowStats,throwLoadStats];for(const map of rateMaps)for(const x of Object.values(map))x.successPct=pct(x.success,x.success+x.error);for(const map of [fieldDirections,fieldSpeeds,fieldMethods,receiveSources,receiveLocations,receiveForms,receiveMethods,tagTargets,baseTargets,coverRoles])for(const x of Object.values(map))x.successPct=pct(x.success,x.success+x.failed);
+  for(const map of Object.values(situationStats))for(const x of Object.values(map)){x.fieldSecurePct=pct(x.fieldSecure,x.fieldAttempts);x.throwSuccessPct=pct(x.throwSuccess,x.throwAttempts);}
+  for(const x of Object.values(positionStats)){x.securePct=pct(x.fieldSecure,x.fieldAttempts);x.totalChances=x.po+x.a+x.e;x.fieldingPct=pct(x.po+x.a,x.totalChances);}
+  const fieldAttempts=field.success+field.unstable+field.failed,handledAttempts=fieldAttempts,throwQualityAttempts=throwQuality.accurate+throwQuality.catchable+throwQuality.uncatchable,throwAttempts=actionCounts.throw,receiveAttempts=receives.clean+receives.recovered+receives.failed,tagAttempts=actionCounts.tag,tagExecutionAttempts=tags.clean+tags.recovered+tags.missed+tags.dropped,tagCallAttempts=tagCalls.out+tagCalls.safe,baseTouchAttempts=actionCounts.base,baseExecutionAttempts=baseTouches.secure+baseTouches.off_base+baseTouches.missed,outTimingAttempts=outTiming.early+outTiming.close+outTiming.late,outExecutionAttempts=tagExecutionAttempts+baseExecutionAttempts,outMisses=tags.missed+tags.dropped+baseTouches.off_base+baseTouches.missed,coverAttempts=covers.correct+covers.recovered+covers.failed,coverTimingAttempts=coverTiming.on_time+coverTiming.late+coverTiming.missed,totalChances=official.po+official.a+official.e;
+  return {plays:events.length,field,throws,receives,tags,tagCalls,baseTouches,baseCalls,outTiming,covers,coverTiming,throwQuality,throwAccuracy,actionCounts,official,dataStatus,fieldDirections,fieldSpeeds,fieldMethods,targets,targetStats,fieldTypeThrowStats,throwLoadStats,receiveSources,receiveLocations,receiveForms,receiveMethods,tagTargets,baseTargets,coverRoles,positionStats,playOuts,runnersAfter,startOuts,runnersBefore,scoringPosition,situationStats,fieldAttempts,handledAttempts,fieldingSuccessPct:pct(field.success,fieldAttempts),cleanPct:pct(field.success,handledAttempts),securePct:pct(field.success+field.unstable,handledAttempts),throwSuccessPct:pct(throws.success,throwQualityAttempts),onTargetPct:pct(throwQuality.accurate,throwQualityAttempts),catchablePct:pct(throws.success,throwQualityAttempts),receivePct:pct(receives.clean+receives.recovered,receiveAttempts),savePct:pct(receiveSaves,receiveSaveOpportunities),scoopPct:pct(scoopSuccess,scoopAttempts),receiveMissPct:pct(receives.failed,receiveAttempts),tagContactPct:pct(tags.clean+tags.recovered,tagExecutionAttempts),tagOutPct:pct(tagCalls.out,tagCallAttempts),baseTouchPct:pct(baseTouches.secure,baseExecutionAttempts),outOnTimePct:pct(outTiming.early+outTiming.close,outTimingAttempts),outMissPct:pct(outMisses,outExecutionAttempts),coverPct:pct(covers.correct+covers.recovered,coverAttempts),coverOnTimePct:pct(coverTiming.on_time,coverTimingAttempts),judgmentAppropriatePct:pct(judgment.appropriate,judgment.evaluated),judgment,throwTLU:round2(throwTLU),throwAttempts,throwQualityAttempts,tagAttempts,tagExecutionAttempts,tagCallAttempts,baseTouchAttempts,baseExecutionAttempts,outTimingAttempts,outExecutionAttempts,coverAttempts,coverTimingAttempts,totalChances,fieldingPct:pct(official.po+official.a,totalChances),events};
 }
 
 export function baserunningSummary(data,{athleteId,date=null,from=null,to=null,gameDayId=null}={}){
@@ -161,14 +223,32 @@ export function baserunningSummary(data,{athleteId,date=null,from=null,to=null,g
   const steals=events.filter(e=>e.eventType==='steal_attempt'),sb=steals.filter(e=>e.metadata?.result==='SUCCESS').length,cs=steals.filter(e=>e.metadata?.result==='FAILED').length,routes={};
   for(const e of steals){const key=`${e.metadata?.from||'?'}>${e.metadata?.to||'?'}`,x=routes[key]||(routes[key]={attempts:0,success:0,failed:0});x.attempts++;if(e.metadata?.result==='SUCCESS')x.success++;else if(e.metadata?.result==='FAILED')x.failed++;}
   for(const x of Object.values(routes))x.successPct=pct(x.success,x.attempts);
-  return {sb,cs,attempts:sb+cs,sbPct:pct(sb,sb+cs),events:steals,routes};
+  return {sb,cs,attempts:sb+cs,sbPct:pct(sb,sb+cs),events:steals,routes,situationStats:baserunningSituationStats(steals)};
 }
 
 export function trainingSummary(data,{athleteId,date=null,from=null,to=null,domain=null,side=null}={}){
   const sets=active(data.trainingSets).filter(s=>s.athleteId===athleteId&&(date?s.activityDate===date:inDateRange(s.activityDate,from,to))&&(!domain||domain==='all'||s.domain===domain)&&(!side||s.side===side));
-  const byDomain={pitching:{sets:0,volume:0,tlu:0},hitting:{sets:0,volume:0,tlu:0},defense:{sets:0,volume:0,tlu:0},baserunning:{sets:0,volume:0,tlu:0}},byType={},bySide={R:0,L:0,N:0},byArea={IF:0,OF:0,N:0},byIntensity={light:0,medium:0,max:0};let tlu=0,defenseThrowCount=0;
-  for(const s of sets){const d=byDomain[s.domain]||(byDomain[s.domain]={sets:0,volume:0,tlu:0});d.sets++;d.volume+=Number(s.quantity)||0;d.tlu+=Number(s.tluTotal)||0;tlu+=Number(s.tluTotal)||0;byType[s.trainingType]=(byType[s.trainingType]||0)+(Number(s.quantity)||0);bySide[s.side||'N']=(bySide[s.side||'N']||0)+(Number(s.quantity)||0);byArea[s.metadata?.area||'N']=(byArea[s.metadata?.area||'N']||0)+(Number(s.quantity)||0);if(s.domain==='pitching'&&s.metadata?.intensity in byIntensity)byIntensity[s.metadata.intensity]+=Number(s.quantity)||0;if(s.domain==='defense')defenseThrowCount+=Number(s.metadata?.throwCount||0);}
-  Object.values(byDomain).forEach(x=>x.tlu=round2(x.tlu));return {sets,byDomain,byType,bySide,byArea,byIntensity,defenseThrowCount,tlu:round2(tlu)};
+  const byDomain={pitching:{sets:0,volume:0,tlu:0},hitting:{sets:0,volume:0,tlu:0},defense:{sets:0,volume:0,tlu:0},baserunning:{sets:0,volume:0,tlu:0}},byType={},bySide={R:0,L:0,N:0},byArea={IF:0,OF:0,N:0},byIntensity={light:0,medium:0,max:0};
+  const defenseActionReps={field:0,receive:0,tag:0,base:0,throw:0,cover:0},byDefensePosition={},byDefenseFlow={},byDefenseBall={},byDefenseTarget={},byDefenseLoad={'0':0,'0.75':0,'0.85':0,'1':0},byDefenseMode={simple:0,scenario:0},defenseOutcomes={target:0,adjust:0,failed:0,evaluated:0,unassessed:0};
+  let tlu=0,defenseThrowCount=0,defenseActionRepsTotal=0,defenseSimpleSets=0,defenseScenarioSets=0,defenseSimpleReps=0,defenseScenarioReps=0;
+  for(const s of sets){
+    const quantity=Number(s.quantity)||0,d=byDomain[s.domain]||(byDomain[s.domain]={sets:0,volume:0,tlu:0}),defenseStats=s.domain==='defense'?defenseTrainingStats(s):null,setTLU=defenseStats?defenseStats.throwTLU:(Number(s.tluTotal)||0);
+    d.sets++;d.volume+=quantity;d.tlu+=setTLU;tlu+=setTLU;byType[s.trainingType]=(byType[s.trainingType]||0)+quantity;bySide[s.side||'N']=(bySide[s.side||'N']||0)+quantity;
+    if(s.domain==='pitching'&&s.metadata?.intensity in byIntensity)byIntensity[s.metadata.intensity]+=quantity;
+    if(s.domain!=='defense'){byArea[s.metadata?.area||'N']=(byArea[s.metadata?.area||'N']||0)+quantity;continue;}
+    const draft=normalizeDefenseTrainingRecord(s),mode=defenseStats.mode;byArea[draft.area||'N']=(byArea[draft.area||'N']||0)+quantity;byDefenseMode[mode]+=quantity;defenseThrowCount+=defenseStats.throwCount;defenseActionRepsTotal+=defenseStats.actionReps;
+    for(const key of Object.keys(defenseActionReps))defenseActionReps[key]+=defenseStats.actionRepsByType[key]||0;
+    for(const [load,count] of Object.entries(defenseStats.throwLoads))byDefenseLoad[load]=(byDefenseLoad[load]||0)+count;
+    for(const key of ['target','adjust','failed','evaluated','unassessed'])defenseOutcomes[key]+=defenseStats.outcomes[key]||0;
+    if(mode==='scenario'){
+      defenseScenarioSets++;defenseScenarioReps+=quantity;byDefensePosition[draft.position]=(byDefensePosition[draft.position]||0)+quantity;const flow=defenseStats.flow||'동작 미입력';byDefenseFlow[flow]=(byDefenseFlow[flow]||0)+quantity;
+      for(const action of draft.actions){const count=defenseTrainingActionCount(action,quantity);if(action.type==='field'&&action.battedBall)byDefenseBall[action.battedBall]=(byDefenseBall[action.battedBall]||0)+count;if(action.type==='throw'&&action.target)byDefenseTarget[action.target]=(byDefenseTarget[action.target]||0)+count;}
+    }else{defenseSimpleSets++;defenseSimpleReps+=quantity;}
+  }
+  Object.values(byDomain).forEach(x=>x.tlu=round2(x.tlu));
+  defenseOutcomes.targetPct=pct(defenseOutcomes.target,defenseOutcomes.evaluated);defenseOutcomes.adjustPct=pct(defenseOutcomes.adjust,defenseOutcomes.evaluated);defenseOutcomes.failedPct=pct(defenseOutcomes.failed,defenseOutcomes.evaluated);
+  const defenseVolume=byDomain.defense?.volume||0;
+  return {sets,byDomain,byType,bySide,byArea,byIntensity,defenseThrowCount,defenseActionReps:defenseActionRepsTotal,defenseActionCounts:defenseActionReps,defenseTluPerRep:defenseVolume?round2((byDomain.defense?.tlu||0)/defenseVolume):null,defenseSimpleSets,defenseScenarioSets,defenseSimpleReps,defenseScenarioReps,byDefenseMode,byDefensePosition,byDefenseFlow,byDefenseBall,byDefenseTarget,byDefenseLoad,defenseOutcomes,tlu:round2(tlu)};
 }
 
 export function workloadSummary(data,{athleteId,date=null,from=null,to=null,throwSide=null}={}){
@@ -177,7 +257,7 @@ export function workloadSummary(data,{athleteId,date=null,from=null,to=null,thro
   const defaultSide=athleteThrowSide(data,athleteId);
   const pitchingSets=allSets.filter(s=>s.domain==='pitching'&&(!throwSide||s.side===throwSide));
   const defenseSets=allSets.filter(s=>s.domain==='defense'&&(!throwSide||defaultSide===throwSide));
-  const pitchingTraining=pitchingSets.reduce((a,s)=>a+Number(s.tluTotal||0),0),defenseTraining=defenseSets.reduce((a,s)=>a+Number(s.tluTotal||0),0);
+  const pitchingTraining=pitchingSets.reduce((a,s)=>a+Number(s.tluTotal||0),0),defenseTraining=defenseSets.reduce((a,s)=>a+defenseTrainingStats(s).throwTLU,0);
   const officialPitchTLU=gp.officialPitches,pickoffTLU=round2((gp.pickoffs+gp.pickoffErrors)*0.85),warmupTLU=gp.warmups,gameDefenseThrowing=gd.throwTLU;
   return {officialPitchTLU,pickoffTLU,warmupTLU,gameDefenseThrowing:round2(gameDefenseThrowing),pitchingTraining:round2(pitchingTraining),defenseThrowing:round2(defenseTraining),total:round2(officialPitchTLU+pickoffTLU+warmupTLU+gameDefenseThrowing+pitchingTraining+defenseTraining)};
 }
@@ -206,7 +286,7 @@ export function analysisMetricValue(snapshot,metric){
     if(snapshot.domain==='hitting'){
       const map={PA:s.PA,H:s.H,AVG:s.AVG,OBP:s.OBP,SLG:s.SLG,OPS:s.OPS,ISO:s.ISO,BABIP:s.BABIP,pitchesPerPA:s.pitchesPerPA,swingPct:s.swingPct==null?null:s.swingPct*100,whiffPct:s.whiffPct==null?null:s.whiffPct*100,contactPct:s.contactPct==null?null:s.contactPct*100,calledStrikePct:s.calledStrikePct==null?null:s.calledStrikePct*100,kPct:s.kPct==null?null:s.kPct*100,bbPct:s.bbPct==null?null:s.bbPct*100,bbPerK:s.bbPerK,swings:s.swings,gbPct:s.battedTypePct.GB==null?null:s.battedTypePct.GB*100,ldPct:s.battedTypePct.LD==null?null:s.battedTypePct.LD*100,fbPct:s.battedTypePct.FB==null?null:s.battedTypePct.FB*100};return map[metric]??null;
     }
-    if(snapshot.domain==='defense'){const map={plays:s.plays,fieldingSuccessPct:s.fieldingSuccessPct==null?null:s.fieldingSuccessPct*100,throwSuccessPct:s.throwSuccessPct==null?null:s.throwSuccessPct*100,throwAttempts:s.throwAttempts,throwTLU:s.throwTLU};return map[metric]??null;}
+    if(snapshot.domain==='defense'){const map={plays:s.plays,fieldingSuccessPct:s.fieldingSuccessPct==null?null:s.fieldingSuccessPct*100,cleanPct:s.cleanPct==null?null:s.cleanPct*100,securePct:s.securePct==null?null:s.securePct*100,throwSuccessPct:s.throwSuccessPct==null?null:s.throwSuccessPct*100,onTargetPct:s.onTargetPct==null?null:s.onTargetPct*100,catchablePct:s.catchablePct==null?null:s.catchablePct*100,receivePct:s.receivePct==null?null:s.receivePct*100,savePct:s.savePct==null?null:s.savePct*100,scoopPct:s.scoopPct==null?null:s.scoopPct*100,receiveMissPct:s.receiveMissPct==null?null:s.receiveMissPct*100,tagAttempts:s.tagAttempts,tagContactPct:s.tagContactPct==null?null:s.tagContactPct*100,tagOutPct:s.tagOutPct==null?null:s.tagOutPct*100,baseTouchAttempts:s.baseTouchAttempts,baseTouchPct:s.baseTouchPct==null?null:s.baseTouchPct*100,outOnTimePct:s.outOnTimePct==null?null:s.outOnTimePct*100,outMissPct:s.outMissPct==null?null:s.outMissPct*100,coverAttempts:s.coverAttempts,coverPct:s.coverPct==null?null:s.coverPct*100,coverOnTimePct:s.coverOnTimePct==null?null:s.coverOnTimePct*100,judgmentAppropriatePct:s.judgmentAppropriatePct==null?null:s.judgmentAppropriatePct*100,throwAttempts:s.throwAttempts,throwTLU:s.throwTLU,PO:s.official.po,A:s.official.a,E:s.official.e,DP:s.official.dp,TC:s.totalChances,FPCT:s.fieldingPct};return map[metric]??null;}
     const map={sb:s.sb,cs:s.cs,attempts:s.attempts,sbPct:s.sbPct==null?null:s.sbPct*100};return map[metric]??null;
   }
   const d=snapshot.domainSummary,t=snapshot.summary,w=snapshot.workload;
@@ -215,7 +295,7 @@ export function analysisMetricValue(snapshot,metric){
   }
   if(snapshot.domain==='pitching'){const map={volume:d?.volume||0,tlu:d?.tlu||0,total_tlu:w.total,sets:d?.sets||0,light:t.byIntensity.light||0,medium:t.byIntensity.medium||0,max:t.byIntensity.max||0};return map[metric]??null;}
   if(snapshot.domain==='hitting'){const map={volume:d?.volume||0,sets:d?.sets||0,total_tlu:w.total};return map[metric]??(t.byType[metric]??null);}
-  if(snapshot.domain==='defense'){const map={volume:d?.volume||0,sets:d?.sets||0,throwCount:t.defenseThrowCount||0,tlu:d?.tlu||0,total_tlu:w.total};return map[metric]??(t.byType[metric]??null);}
+  if(snapshot.domain==='defense'){const map={volume:d?.volume||0,sets:d?.sets||0,actionReps:t.defenseActionReps||0,throwCount:t.defenseThrowCount||0,tlu:d?.tlu||0,tluPerRep:t.defenseTluPerRep,total_tlu:w.total,fieldReps:t.defenseActionCounts.field||0,receiveReps:t.defenseActionCounts.receive||0,tagReps:t.defenseActionCounts.tag||0,baseReps:t.defenseActionCounts.base||0,throwReps:t.defenseActionCounts.throw||0,coverReps:t.defenseActionCounts.cover||0,simpleSets:t.defenseSimpleSets||0,scenarioSets:t.defenseScenarioSets||0,evaluatedReps:t.defenseOutcomes.evaluated||0,targetPct:t.defenseOutcomes.targetPct==null?null:t.defenseOutcomes.targetPct*100,adjustPct:t.defenseOutcomes.adjustPct==null?null:t.defenseOutcomes.adjustPct*100,failurePct:t.defenseOutcomes.failedPct==null?null:t.defenseOutcomes.failedPct*100};return map[metric]??(t.byType[metric]??null);}
   const map={volume:d?.volume||0,sets:d?.sets||0,total_tlu:w.total};return map[metric]??(t.byType[metric]??null);
 }
 
