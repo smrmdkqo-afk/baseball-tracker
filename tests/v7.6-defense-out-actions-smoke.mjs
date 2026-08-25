@@ -113,6 +113,6 @@ assert.match(app,/if\(action\.type==='base'\)return \[\['터치 베이스'/,'기
 assert.match(css,/\.defense-action-type-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\}/);
 assert.match(css,/@media\(max-width:780px\)\{\.defense-action-type-grid\{grid-template-columns:1fr 1fr\}\}/);
 assert.match(css,/\.defense-connection-warning/);assert.match(css,/\.defense-derived\.out-summary/);
-assert.equal(read('VERSION').trim(),'7.9.0');assert.match(html,/야구일기 V7\.9\.0/);assert.match(sw,/baseball-diary-v7\.9\.0/);
+assert.equal(read('VERSION').trim(),'7.9.1');assert.match(html,/야구일기 V7\.9\.1/);assert.match(sw,/baseball-diary-v7\.9\.1/);
 
-console.log('V7.6 direct-out defense regression tests on V7.9.0: PASS');
+console.log('V7.6 direct-out defense regression tests on V7.9.1: PASS');

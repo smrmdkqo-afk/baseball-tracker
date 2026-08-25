@@ -168,3 +168,7 @@
 @media(max-width:780px){.game-situation-fields,.defense-situation .game-situation-fields{grid-template-columns:1fr}.situation-runner-choices{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}}
 @media(max-width:599px){.matchup-situation{margin-top:13px;padding-top:12px}.game-situation-card{margin-bottom:15px;padding:13px;border-radius:14px}.game-situation-head{align-items:flex-start;margin-bottom:10px}.game-situation-fields{gap:12px}.situation-choice-row,.situation-runner-choices{gap:6px}.situation-choice{min-height:46px;padding:8px 3px}.situation-choice b{font-size:9.5px}.situation-runner-choices{grid-template-columns:minmax(0,.76fr) minmax(0,1.24fr)}.situation-runner-bases{grid-template-columns:repeat(3,minmax(0,1fr))}.record-edit-situation{padding:10px}}
 @media(pointer:coarse){.situation-choice{min-height:48px}}
+
+/* V7.9.1 — pitching out-count auto advance */
+.toast.actionable{display:flex;align-items:center;gap:15px;min-width:min(390px,calc(100vw - 28px));padding:11px 11px 11px 16px;pointer-events:auto;text-align:left}.toast.actionable .toast-copy{min-width:0;flex:1}.toast.actionable button{flex:0 0 auto;min-height:38px;border:0;border-radius:9px;background:#fff;color:#0c5f49;padding:8px 11px;font-size:11px;font-weight:950}.situation-auto-note{margin:10px 1px 0;border-radius:9px;background:#eaf3f9;padding:8px 10px;color:#496b83;font-size:9px;font-weight:800;line-height:1.45}
+@media(max-width:599px){.toast.actionable{gap:10px}.toast.actionable button{min-height:44px}}
