@@ -168,3 +168,17 @@
 @media(max-width:780px){.game-situation-fields,.defense-situation .game-situation-fields{grid-template-columns:1fr}.situation-runner-choices{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}}
 @media(max-width:599px){.matchup-situation{margin-top:13px;padding-top:12px}.game-situation-card{margin-bottom:15px;padding:13px;border-radius:14px}.game-situation-head{align-items:flex-start;margin-bottom:10px}.game-situation-fields{gap:12px}.situation-choice-row,.situation-runner-choices{gap:6px}.situation-choice{min-height:46px;padding:8px 3px}.situation-choice b{font-size:9.5px}.situation-runner-choices{grid-template-columns:minmax(0,.76fr) minmax(0,1.24fr)}.situation-runner-bases{grid-template-columns:repeat(3,minmax(0,1fr))}.record-edit-situation{padding:10px}}
 @media(pointer:coarse){.situation-choice{min-height:48px}}
+
+/* V7.10.0 — game-consistent defense training flow completion */
+.training-flow-status{border-radius:999px;padding:5px 8px;white-space:nowrap}
+.training-flow-status.building{background:var(--amber2);color:var(--amber)}
+.training-flow-status.complete{background:var(--green2);color:var(--green)}
+.training-scenario-outcome{margin-top:12px}
+.training-scenario-summary{border:1px solid #d7e4ed;border-radius:12px;background:#f3f8fc;padding:11px 12px}
+.training-scenario-summary span,.training-scenario-summary b,.training-scenario-summary small{display:block}
+.training-scenario-summary span{color:#708697;font-size:9px;font-weight:900}
+.training-scenario-summary b{margin-top:4px;color:#244965;font-size:12px;line-height:1.45}
+.training-scenario-summary small{margin-top:4px;color:#7a8e9e;font-size:8px;font-weight:800}
+.training-scenario-outcome .training-volume-preview,.training-scenario-outcome .training-outcomes,.training-scenario-outcome .training-note-field{margin-top:0}
+@media(max-width:599px){.training-flow-head{align-items:flex-start;flex-direction:column;gap:7px}.training-flow-status{align-self:flex-start}.training-scenario-outcome{margin-top:10px}}
+@media(pointer:coarse){.training-scenario-outcome .defense-continue-play,.training-scenario-outcome .defense-training-save{min-height:48px}}

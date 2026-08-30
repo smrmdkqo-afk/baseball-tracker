@@ -73,6 +73,6 @@ assert.match(app,/\['0','매우 가벼움','0\.00 TLU'\]/);
 assert.match(app,/if\(draft\.official\?\.status==='missing'\)/);
 assert.match(css,/\.defense-official-required\{display:flex/);
 assert.match(css,/\.defense-choice-grid\.after-play\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)\}/);
-assert.equal(read('VERSION').trim(),'7.9.0');assert.match(app,/appVersion:'7\.9\.0'/);assert.match(sw,/baseball-diary-v7\.9\.0/);assert.match(sw,/\.\/js\/defense\.js\?v=7\.9\.0/);assert.match(html,/js\/app\.js\?v=7\.9\.0/);
+assert.equal(read('VERSION').trim(),'7.10.0');assert.match(app,/appVersion:'7\.10\.0'/);assert.match(sw,/baseball-diary-v7\.10\.0/);assert.match(sw,/\.\/js\/defense\.js\?v=7\.10\.0/);assert.match(html,/js\/app\.js\?v=7\.10\.0/);
 
 console.log('V7.8 defense input refinement tests: PASS');

@@ -63,6 +63,6 @@ assert.match(html,/id="pitchEditSituation"/,'한 공 수정에서도 경기 상�
 const reloadSource=app.slice(app.indexOf('async function reloadData()'),app.indexOf('function markLocal'));
 assert.doesNotMatch(reloadSource,/gameSituationDrafts\.clear/,'동기화 재조회가 아직 저장하지 않은 다음 기록 상황을 지우면 안 됩니다.');
 assert.match(app,/function resetAccountMemory\(\)[\s\S]*?gameSituationDrafts\.clear\(\)/,'계정 전환 때는 이전 계정의 상황 초안을 제거해야 합니다.');
-assert.equal(read('VERSION').trim(),'7.9.0');assert.match(app,/appVersion:'7\.9\.0'/);assert.match(sw,/baseball-diary-v7\.9\.0/);
+assert.equal(read('VERSION').trim(),'7.10.0');assert.match(app,/appVersion:'7\.10\.0'/);assert.match(sw,/baseball-diary-v7\.10\.0/);
 
 console.log('V7.9 shared game situation tests: PASS');

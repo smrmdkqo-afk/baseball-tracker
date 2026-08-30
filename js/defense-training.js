@@ -1,4 +1,4 @@
-export const DEFENSE_TRAINING_VERSION=1;
+export const DEFENSE_TRAINING_VERSION=2;
 export const DEFENSE_TRAINING_MODES=['simple','scenario'];
 export const DEFENSE_TRAINING_ACTION_TYPES=['field','receive','tag','base','throw','cover'];
 export const DEFENSE_TRAINING_THROW_LOADS=[0,.75,.85,1];
@@ -30,7 +30,7 @@ export function newDefenseTrainingAction(type,id=null){
 }
 
 export function newDefenseTrainingDraft({mode='simple',area='IF',position='SS',trainingType='FIELDING',quantity=10}={}){
-  return {defenseTrainingVersion:DEFENSE_TRAINING_VERSION,trainingMode:DEFENSE_TRAINING_MODES.includes(mode)?mode:'simple',area:normalizeArea(area),position:normalizePosition(position),trainingType:textOrNull(trainingType,60)||'FIELDING',quantity:Math.max(0,Math.round(Number(quantity)||0)),simple:{throwCount:0,throwIntensity:.75,throwCountAuto:true},actions:[],outcomes:{target:null,adjust:null,failed:null},note:null,legacy:false};
+  return {defenseTrainingVersion:DEFENSE_TRAINING_VERSION,trainingMode:DEFENSE_TRAINING_MODES.includes(mode)?mode:'simple',area:normalizeArea(area),position:normalizePosition(position),trainingType:textOrNull(trainingType,60)||'FIELDING',quantity:Math.max(0,Math.round(Number(quantity)||0)),simple:{throwCount:0,throwIntensity:.75,throwCountAuto:true},actions:[],flowEnded:false,outcomes:{target:null,adjust:null,failed:null},note:null,legacy:false};
 }
 
 function normalizeAction(raw,index){
@@ -65,12 +65,13 @@ export function normalizeDefenseTrainingOutcomes(raw={},quantity=0){
 }
 
 export function normalizeDefenseTrainingMetadata(metadata={},options={}){
-  const source=metadata&&typeof metadata==='object'?metadata:{},quantity=Math.max(0,Math.round(Number(options.quantity??source.quantity)||0)),hasScenario=Number(source.defenseTrainingVersion||0)>=1&&source.trainingMode==='scenario'&&Array.isArray(source.actions),mode=hasScenario?'scenario':'simple';
+  const source=metadata&&typeof metadata==='object'?metadata:{},sourceVersion=Number(source.defenseTrainingVersion||0),quantity=Math.max(0,Math.round(Number(options.quantity??source.quantity)||0)),hasScenario=sourceVersion>=1&&source.trainingMode==='scenario'&&Array.isArray(source.actions),mode=hasScenario?'scenario':'simple';
   const draft=newDefenseTrainingDraft({mode,area:source.area,position:source.position||options.position,trainingType:options.trainingType||source.trainingType,quantity});
-  draft.legacy=Number(source.defenseTrainingVersion||0)<1;
+  draft.legacy=sourceVersion<1;
   draft.note=textOrNull(source.note);
   draft.outcomes=normalizeDefenseTrainingOutcomes(source.outcomes||{},quantity);
   if(mode==='scenario'){
+    draft.flowEnded=sourceVersion>=2?source.flowEnded===true:true;
     const seen=new Set();draft.actions=source.actions.map((raw,index)=>{const action=normalizeAction(raw,index);let id=action.id,suffix=2;while(seen.has(id))id=`${generatedId(index,action.type)}-${suffix++}`;action.id=id;seen.add(id);return action;});
   }else{
     const simpleSource=source.simple&&typeof source.simple==='object'?source.simple:source,throwCount=integerOrNull(simpleSource.throwCount)??0,rawLoad=Number(simpleSource.throwIntensity);
@@ -96,7 +97,7 @@ export function defenseTrainingStats(input,quantity=null){
     throwCount=Math.max(0,Math.round(Number(draft.simple.throwCount)||0));const load=DEFENSE_TRAINING_THROW_LOADS.includes(Number(draft.simple.throwIntensity))?Number(draft.simple.throwIntensity):.75;throwTLU=throwCount*load;throwLoads[String(load)]=(throwLoads[String(load)]||0)+throwCount;
   }
   const outcomes=normalizeDefenseTrainingOutcomes(draft.outcomes,reps);
-  return {mode:draft.trainingMode,reps,actionReps,actionRepsByType,throwCount,throwTLU:round2(throwTLU),tluPerRep:reps?round2(throwTLU/reps):null,throwLoads,outcomes,actions:draft.actions,position:draft.position,area:draft.area,flow:draft.actions.map(action=>defenseTrainingActionShortLabel(action.type)).join(' → ')};
+  return {mode:draft.trainingMode,reps,actionReps,actionRepsByType,throwCount,throwTLU:round2(throwTLU),tluPerRep:reps?round2(throwTLU/reps):null,throwLoads,outcomes,actions:draft.actions,position:draft.position,area:draft.area,flowEnded:draft.trainingMode==='scenario'?draft.flowEnded:true,flow:draft.actions.map(action=>defenseTrainingActionShortLabel(action.type)).join(' → ')};
 }
 
 export function serializeDefenseTrainingDraft(input){
@@ -104,6 +105,7 @@ export function serializeDefenseTrainingDraft(input){
   if(draft.trainingMode==='scenario'){
     metadata.position=draft.position;
     metadata.actions=draft.actions.map(action=>copy(action));
+    metadata.flowEnded=draft.flowEnded===true;
   }else metadata.throwIntensity=draft.simple.throwIntensity;
   return metadata;
 }

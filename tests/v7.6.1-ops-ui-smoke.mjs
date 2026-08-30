@@ -85,7 +85,7 @@ assert.match(css,/\.pitch-count-area\{[^}]*border-bottom:1px solid #e4ebf1/);
 assert.match(css,/@media\(max-width:599px\)\{\.history-controls\{padding:12px[\s\S]*?\.pitch-entry-card\{padding:12px/,'검색·입력 카드는 모바일 여백도 함께 줄여야 합니다.');
 assert.match(css,/\.pitch-entry-card \.count-balls\{gap:5px;flex-wrap:nowrap\}/,'모바일에서도 B 1 2 3 4 S 1 2가 한 줄에 들어가야 합니다.');
 
-assert.equal(read('VERSION').trim(),'7.9.0');assert.match(app,/appVersion:'7\.9\.0'/);assert.match(html,/야구일기 V7\.9\.0/);assert.match(sw,/baseball-diary-v7\.9\.0/);
+assert.equal(read('VERSION').trim(),'7.10.0');assert.match(app,/appVersion:'7\.10\.0'/);assert.match(html,/야구일기 V7\.10\.0/);assert.match(sw,/baseball-diary-v7\.10\.0/);
 assert.doesNotMatch([app,analytics,analysisScope,html,sw].join('\n'),/[?&]v=7\.6\.0/,'실행 파일에 이전 캐시 쿼리가 남으면 안 됩니다.');
 
-console.log('V7.9.0 OPS and UI consistency smoke tests: PASS');
+console.log('V7.10.0 OPS and UI consistency smoke tests: PASS');

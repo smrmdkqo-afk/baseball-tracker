@@ -1,5 +1,5 @@
-import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary,defenseThrowQuality} from './defense.js?v=7.9.0';
-import {normalizeDefenseTrainingRecord,defenseTrainingActionCount,defenseTrainingStats} from './defense-training.js?v=7.9.0';
+import {normalizeDefenseMetadata,defenseMissingFields,defenseThrowTLU,defenseJudgmentSummary,defenseThrowQuality} from './defense.js?v=7.10.0';
+import {normalizeDefenseTrainingRecord,defenseTrainingActionCount,defenseTrainingStats} from './defense-training.js?v=7.10.0';
 
 export const OFFICIAL_PITCH_TYPES=new Set(['ball','called','swinging','foul','inplay','hbp']);
 export const STRIKE_PITCH_TYPES=new Set(['called','swinging','foul','inplay']);
